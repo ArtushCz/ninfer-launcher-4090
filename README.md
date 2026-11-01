@@ -14,7 +14,12 @@ Built with **Avalonia UI 12** + **CommunityToolkit.Mvvm**, targeting **.NET 10**
 ## Features
 
 - One-click start / stop / restart of the Ninfer server.
-- Pre-tuned profiles with verified context ceilings for a 24 GB card
+- Profile dropdown with colour-coded groups – pick a profile, the right
+  binary / flags are picked for you:
+  - <span style="color:#6A9955">green – Recommended and tested</span> (daily drivers),
+  - <span style="color:#C8A24B">amber – Usable and tested</span> (fast, low-VRAM),
+  - <span style="color:#569CD6">blue – Benchmarks</span> (run via `ninfer_bench.exe`),
+  - <span style="color:#A54242">red – Not tested / not working</span> (known limits, low VRAM).
 - Live terminal with noisy-log filtering and a prefill/decode tok/s readout.
 - Live configuration (server dir, model file, port) persisted to
   `%AppData%\NinferLauncher\settings.json`.
@@ -99,6 +104,24 @@ Profiles are defined in `Models/ServerSettings.cs` (`ServerProfiles`) and docume
 
 - Contexts above ~240k tokens may not work under WDDM; the launcher prints a warning for
   profiles over 240k.
+- Bench profiles run `ninfer_bench.exe` with the prefill at the profile's context plus a
+  128-token decode (tg128), using `<serverDir>\bench\fixtures\bench_corpus.ids` as corpus.
+
+### Current profile set
+
+| Group | Profile | Context | MTP | KV dtype | Notes |
+| --- | --- | --- | --- | --- | --- |
+| 🟢 Recommended | Agent – 240K + MTP3 | 245 760 | 3 | rk2v4-e8 (2-bit) | vision 4k, default start |
+| 🟢 Recommended | Text – 64K + MTP4 | 65 536 | 4 | rk2v4-e8 | text-only default |
+| 🟡 Usable | Fast 16K / 32K / 128K (2-bit) · Fast 64K (int8) | 16 384 – 131 072 | 4 | rk2v4-e8 / int8 | low-VRAM, high tok/s |
+| 🔵 Bench | Bench 16K / 32K / 64K (MTP4), Bench 240K (MTP3) | 16 384 – 245 760 | 3–4 | rk2v4-e8 | runs `ninfer_bench.exe` |
+| 🔴 Untested | Text 128K–48K / 40K, MTP0 · MTP4 | 40 960 – 131 072 | 0 / 4 | all 5 dtypes | lowered for ~3 GB VRAM budget |
+| 🔴 Untested | Vision8k 96K / 76K / 36K | 36 864 – 98 304 | 4 | rk2v4-e8 / rk4v4-e8 / int8 | 8192 vision tokens |
+| 🔴 Untested | Vision4k 100K / 80K | 81 920 – 102 400 | 4 | rk2v4-e8 / rk4v4-e8 | 4096 vision tokens |
+
+Red-group contexts were lowered from the original 240k–500k set so the KV-cache
+footprint stays around **3 GB**; verify them on your card and promote a profile to a
+higher group once measured.
 
 ## License
 

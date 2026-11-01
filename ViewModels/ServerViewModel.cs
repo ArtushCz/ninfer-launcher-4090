@@ -130,8 +130,19 @@ public partial class ServerViewModel : ViewModelBase
 [RelayCommand]
     private void StartServer()
     {
+        var profile = _settings.SelectedProfile;
+
+        // A benchmark loads the full model (~16 GB) on top of whatever is already on the
+        // GPU. If a server is still running there isn't enough VRAM – require it to stop first.
         if (IsRunning)
+        {
+            if (profile.IsBench)
+                AppendLine("[BENCH] A server is already running and holding VRAM. Stop it first, then run the benchmark.", true);
+            else
+                AppendLine("[LAUNCHER] A server is already running.", true);
             return;
+        }
+
         if (!int.TryParse(_settings.Port, out var port))
         {
             AppendLine("[ERROR] Enter a valid port.", true);
@@ -149,13 +160,14 @@ public partial class ServerViewModel : ViewModelBase
             return;
         }
 
-        var profile = _settings.SelectedProfile;
         AppendLine($"[LAUNCHER] Profile: {profile.Name}");
         if (profile.WarnHighContext)
             AppendLine($"[WARN] Profile {profile.MaxContext / 1000}K tokens is above 240K – it may not work on Windows (WDDM). If the server is not listening on the port, run a lower profile.", true);
         ResetTps();
         AppendLine($"[LAUNCHER] Directory: {dir}");
-        AppendLine($"[LAUNCHER] Start: {profile.ExeName} (port {port})");
+        AppendLine(profile.IsBench
+            ? $"[LAUNCHER] Start: {profile.ExeName} (benchmark – freeing VRAM first)"
+            : $"[LAUNCHER] Start: {profile.ExeName} (port {port})");
         AppendLine("-------------------------------------------------------------");
         _service.Start(dir, _settings.FullModelPath, port, profile);
     }

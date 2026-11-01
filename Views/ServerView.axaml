@@ -31,36 +31,86 @@
         <Border Grid.Row="1" Classes="card" Margin="0,0,0,12">
             <Grid ColumnDefinitions="*,*">
                 <!-- left column: directory + model -->
-                <StackPanel Grid.Column="0" Spacing="6" Margin="0,0,18,0">
-                    <TextBlock Classes="cardtitle" Text="NINFER SERVER DIRECTORY"/>
-                    <Grid ColumnDefinitions="*,Auto">
-                        <TextBox Grid.Column="0"
-                                 Text="{Binding Settings.ServerDir, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                        <Button Grid.Column="1" Classes="icon" Width="40" Margin="8,0,0,0"
-                                Command="{Binding BrowseDirCommand}"
-                                ToolTip.Tip="Select server directory">
-                            <Image Source="{x:Static local:IconSet.Folder}" Width="18" Margin="4" Height="18"/>
-                        </Button>
-                    </Grid>
-                    <TextBlock Classes="cardtitle" Text="MODEL FILE" Margin="0,12,0,6"/>
-                    <TextBox Text="{Binding Settings.ModelFile, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                    <TextBlock FontSize="11" Foreground="#6E7279" Margin="0,8,0,0"
-                               Text="{Binding Settings.FullModelPath}"
+                <Grid Grid.Column="0" Margin="0,0,18,0" ColumnDefinitions="*,Auto"
+          RowDefinitions="Auto,Auto,Auto,Auto,Auto">
+                    <TextBlock Grid.Row="0" Grid.ColumnSpan="2" Classes="cardtitle"
+                               Text="NINFER SERVER DIRECTORY"/>
+                    <TextBox Grid.Row="1" Grid.Column="0"
+                             Text="{Binding Settings.ServerDir, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                    <Button Grid.Row="1" Grid.Column="1" Classes="icon" Width="40" Margin="8,0,0,0"
+                            VerticalAlignment="Center"
+                            Command="{Binding BrowseDirCommand}"
+                            ToolTip.Tip="Select server directory">
+                        <Image Source="{x:Static local:IconSet.Folder}" Width="18" Margin="4" Height="18"/>
+                    </Button>
+                    <TextBlock Grid.Row="2" Grid.ColumnSpan="2" Classes="cardtitle"
+                               Text="MODEL FILE" Margin="0,12,0,6"/>
+                    <ComboBox Grid.Row="3" Grid.Column="0"
+                              HorizontalAlignment="Stretch"
+                              ItemsSource="{Binding Settings.ModelRows}"
+                              SelectedItem="{Binding Settings.SelectedModelRow, Mode=TwoWay}"
+                              VerticalContentAlignment="Center">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Title}"
+                                           TextWrapping="Wrap"
+                                           VerticalAlignment="Center"/>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <Button Grid.Row="3" Grid.Column="1" Classes="icon" Width="40" Margin="8,0,0,0"
+                            VerticalAlignment="Center"
+                            Command="{Binding Settings.PickModelFileCommand}"
+                            ToolTip.Tip="Pick a .ninfer file from disk">
+                        <Image Source="{x:Static local:IconSet.Folder}" Width="18" Margin="4" Height="18"/>
+                    </Button>
+                    <TextBlock Grid.Row="4" Grid.ColumnSpan="2" FontSize="11" Foreground="#6E7279"
+                               Margin="0,8,0,0" Text="{Binding Settings.FullModelPath}"
                                TextTrimming="CharacterEllipsis"
                                ToolTip.Tip="{Binding Settings.FullModelPath}"/>
-                </StackPanel>
+                </Grid>
 
                 <!-- right column: profile, port, token -->
                 <StackPanel Grid.Column="1" Spacing="6" Margin="0,0,0,0">
                     <TextBlock Classes="cardtitle" Text="SERVER PROFILE"/>
-                    <ComboBox ItemsSource="{Binding Settings.Profiles}"
-                              SelectedIndex="{Binding Settings.ProfileIndex, Mode=TwoWay}">
+                    <ComboBox ItemsSource="{Binding Settings.ProfileRows}"
+                              SelectedItem="{Binding Settings.SelectedRow, Mode=TwoWay}"
+                              HorizontalAlignment="Stretch"
+                              MinWidth="380">
                         <ComboBox.ItemTemplate>
                             <DataTemplate>
-                                <TextBlock Text="{Binding Name}"/>
+                                <Border Padding="10,7" Background="{Binding Band}">
+                                    <TextBlock Text="{Binding Title}"
+                                               TextWrapping="Wrap"
+                                               VerticalAlignment="Center"/>
+                                </Border>
                             </DataTemplate>
                         </ComboBox.ItemTemplate>
                     </ComboBox>
+                    <Border Margin="0,10,0,0" Background="{Binding Settings.GroupBrushFaint}"
+                            BorderBrush="{Binding Settings.GroupBrush}" BorderThickness="1"
+                            CornerRadius="6" Padding="12,10">
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="14">
+                            <StackPanel Grid.Column="0" Spacing="3"
+                                        VerticalAlignment="Top">
+                                <TextBlock Text="Context:" Foreground="#8A8E94"/>
+                                <TextBlock Text="MTP:" Foreground="#8A8E94"/>
+                                <TextBlock Text="KV cache:" Foreground="#8A8E94"/>
+                                <TextBlock Text="Vision:" Foreground="#8A8E94"/>
+                                <TextBlock Text="Binary:" Foreground="#8A8E94"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Spacing="3">
+                                <TextBlock Text="{Binding Settings.InfoContext}" TextWrapping="Wrap"/>
+                                <TextBlock Text="{Binding Settings.InfoMtp}" TextWrapping="Wrap"/>
+                                <TextBlock Text="{Binding Settings.InfoKv}" TextWrapping="Wrap"/>
+                                <TextBlock Text="{Binding Settings.InfoVision}" TextWrapping="Wrap"/>
+                                <TextBlock Text="{Binding Settings.SelectedProfile.ExeName}" TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                    <TextBlock Margin="0,6,0,0" FontSize="11" TextWrapping="Wrap"
+                               Foreground="{Binding Settings.GroupBrush}"
+                               Text="{Binding Settings.InfoGroupNote}"/>
                     <Border Background="#332A1A" BorderBrush="#8A6D1F" BorderThickness="1"
                             CornerRadius="6" Padding="10,8" Margin="0,10,0,0"
                             IsVisible="{Binding Settings.SelectedProfile.WarnHighContext}">

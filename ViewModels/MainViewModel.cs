@@ -16,6 +16,7 @@ public partial class MainViewModel : ViewModelBase
     public MainViewModel(Window window)
     {
         Settings = new SettingsViewModel();
+        Settings.AttachWindow(window);
         Settings.LoadFromStore();
         Server = new ServerViewModel(Settings);
         Server.AttachWindow(window);

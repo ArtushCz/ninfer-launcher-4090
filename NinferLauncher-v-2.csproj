@@ -11,6 +11,8 @@
         <Folder Include="Models\"/>
         <AvaloniaResource Include="Assets\**"/>
         <AvaloniaResource Include="Icons\**"/>
+        <None Include="bench_corpus.ids" CopyToOutputDirectory="PreserveNewest" />
+        <None Include="bench_corpus.manifest.json" CopyToOutputDirectory="PreserveNewest" />
     </ItemGroup>
 
     <ItemGroup>
