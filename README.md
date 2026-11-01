@@ -1,6 +1,6 @@
-# NInfer Launcher v2
+# Ninfer Launcher v2
 
-Desktop launcher for the **NInfer** local inference server, tuned for **NVIDIA RTX 4090 (24 GB)**.
+Desktop launcher for the **Ninfer** local inference server, tuned for **NVIDIA RTX 4090 (24 GB)**.
 It is a graphical front-end (replacement for `runnerbat` / `RunNinfer.bat`) that starts
 `ninfer-serve.exe` / `ninfer_bench.exe` with pre-tuned profile flags and shows a live
 terminal with the throughput (prefill / decode tok/s).
@@ -9,11 +9,11 @@ Built with **Avalonia UI 12** + **CommunityToolkit.Mvvm**, targeting **.NET 10**
 
 ## Preview
 
-![NInfer Launcher v2 preview](images/screenshot.png)
+![Ninfer Launcher v2 preview](images/screenshot.png)
 
 ## Features
 
-- One-click start / stop / restart of the NInfer server.
+- One-click start / stop / restart of the Ninfer server.
 - Pre-tuned profiles with verified context ceilings for a 24 GB card
 - Live terminal with noisy-log filtering and a prefill/decode tok/s readout.
 - Live configuration (server dir, model file, port) persisted to
@@ -23,17 +23,17 @@ Built with **Avalonia UI 12** + **CommunityToolkit.Mvvm**, targeting **.NET 10**
 
 | Dependency | Details |
 | --- | --- |
-| **NInfer server** | `ninfer-rtx4090-windows-x64-v1.2.0` from <https://github.com/UDPSendToFailed/ninfer-4090> |
+| **Ninfer server** | `ninfer-rtx4090-windows-x64-v1.2.0` from <https://github.com/UDPSendToFailed/ninfer-4090> |
 | **Model** | `Qwen3.8-27B-Uncensored.ninfer` |
 | **GPU** | NVIDIA RTX 4090 (24 GB) with the latest driver / CUDA runtime the server requires |
 | **OS** | Windows 10 / 11 |
 
-> The launcher is only the **launcher** – it does **not** bundle the NInfer server or the
+> The launcher is only the **launcher** – it does **not** bundle the Ninfer server or the
 > model. You have to install both separately (see below) and point the launcher at them.
 
 ## Installation
 
-### 1. Get the NInfer server
+### 1. Get the Ninfer server
 
 Download and extract
 [`ninfer-rtx4090-windows-x64-v1.2.0`](https://github.com/UDPSendToFailed/ninfer-4090) to a
@@ -124,7 +124,7 @@ Released under the [MIT License](LICENSE) – free to use, modify and distribute
 ## Troubleshooting
 
 - **"Adresář serveru neexistuje" / "Model nenalezen"** – fix the server directory / model
-  path in Settings to the real location of the NInfer folder and model file.
+  path in Settings to the real location of the Ninfer folder and model file.
 - **Port in use** – change the port in Settings or stop other processes bound to it.
 - **Server starts but no response** – for high-context (>240k) profiles fall back to a
   smaller context profile; on WDDM very large contexts can fail to bind.

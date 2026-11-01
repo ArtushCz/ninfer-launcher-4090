@@ -17,7 +17,7 @@ public enum ServerState
 }
 
 /// <summary>
-/// Manages the NInfer server process (equivalent to RunNinfer.bat) –
+/// Manages the Ninfer server process (equivalent to RunNinfer.bat) –
 /// starts ninfer-serve.exe / ninfer_bench.exe with the profile arguments,
 /// captures stdout/stderr and can kill the process (including the process tree).
 /// Events are raised on worker threads!
