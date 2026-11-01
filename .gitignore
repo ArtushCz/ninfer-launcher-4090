@@ -49,6 +49,8 @@ settings.json
 # Local publish / run artifacts
 out/
 bin_publish/
+dist/
+release/
 
 # NInfer server folder if ever cloned into the workspace (large binaries)
 ninfer-rtx4090*/
