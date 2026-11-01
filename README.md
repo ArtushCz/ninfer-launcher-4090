@@ -7,11 +7,14 @@ terminal with the throughput (prefill / decode tok/s).
 
 Built with **Avalonia UI 12** + **CommunityToolkit.Mvvm**, targeting **.NET 10** (Windows).
 
+## Preview
+
+![NInfer Launcher v2 preview](images/screenshot.png)
+
 ## Features
 
 - One-click start / stop / restart of the NInfer server.
 - Pre-tuned profiles with verified context ceilings for a 24 GB card
-  (see [`CustomProfiles.txt`](CustomProfiles.txt) for the full matrix).
 - Live terminal with noisy-log filtering and a prefill/decode tok/s readout.
 - Live configuration (server dir, model file, port) persisted to
   `%AppData%\NinferLauncher\settings.json`.

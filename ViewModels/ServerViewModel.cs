@@ -96,7 +96,10 @@ public partial class ServerViewModel : ViewModelBase
 
     public void AppendLine(string text, bool isError = false)
     {
-        Terminal.Add(new TerminalLine($"[{DateTime.Now:HH:mm:ss}] {text}", isError));
+        // Server log lines already carry their own "[date time]" stamp, and launcher
+        // lines start with a "[TAG]" marker – only add a time for lines that lack one.
+        var needsTime = text.Length == 0 || text[0] != '[';
+        Terminal.Add(new TerminalLine(needsTime ? $"[{DateTime.Now:HH:mm:ss}] {text}" : text, isError));
         while (Terminal.Count > 5000)
             Terminal.RemoveAt(0);
     }
