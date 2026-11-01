@@ -1,0 +1,57 @@
+# ---- Build output ----
+bin/
+obj/
+out/
+publish/
+*.user
+*.suo
+
+# NuGet / package restore
+*.nupkg
+**/[Pp]ackages/
+.vs/
+
+# .NET / Rider / Rider-model artifacts
+**/obj/
+**/Debug/
+**/Release/
+project.packagespec.json
+*.dgspec.json
+*.g.props
+*.g.targets
+project.assets.json
+project.nuget.cache
+rider.project.model.*
+.idea/.idea.*
+.idea/**/contentModel.xml
+
+# Rider / JetBrains
+.idea/
+
+# Visual Studio / VS Code
+.vs/
+.vscode/
+
+# Logs & local temp files
+*.log
+*.tmp
+*.cache
+*.dmp
+
+# OS files
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# User settings (lives in %AppData%, never in the repo – ignore any stray copy)
+settings.json
+
+# Local publish / run artifacts
+out/
+bin_publish/
+
+# NInfer server folder if ever cloned into the workspace (large binaries)
+ninfer-rtx4090*/
+ninfer-serve.exe
+ninfer_bench.exe
+*.ninfer

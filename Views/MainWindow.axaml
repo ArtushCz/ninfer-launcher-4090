@@ -1,0 +1,68 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:NinferLauncher_v_2"
+        xmlns:vm="using:NinferLauncher_v_2.ViewModels"
+        x:Class="NinferLauncher_v_2.Views.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Icon="/Icons/NinferLauncherIco.png"
+        Title="Ninfer Launcher – RTX 4090"
+        Width="1180" Height="720"
+        MinWidth="980" MinHeight="620"
+        WindowStartupLocation="CenterScreen">
+
+    <!-- ====== Sidebar ====== -->
+    <Grid ColumnDefinitions="104,*">
+        <Border Grid.Column="0"
+                Background="#1D1F21"
+                BorderBrush="#373B41" BorderThickness="0,0,1,0">
+            <DockPanel>
+                <!-- Logo at the top -->
+                <StackPanel DockPanel.Dock="Top" Margin="13,18,13,6">
+                    <Image Source="/Icons/NinferLauncherIco.png"
+                           Width="64" Height="150"
+                           HorizontalAlignment="Center"/>
+                </StackPanel>
+
+                <!-- Bottom: version + settings -->
+                <StackPanel DockPanel.Dock="Bottom" Spacing="8" Margin="13,10,13,16">
+                    <TextBlock Text="v2.0"
+                               FontSize="11" Foreground="#4A4E55"
+                               HorizontalAlignment="Center"/>
+                    <ToggleButton Classes="nav"
+                                  IsChecked="{Binding IsSettingsSelected, Mode=TwoWay}"
+                                  ToolTip.Tip="Settings">
+                        <Image Source="{x:Static local:IconSet.Settings}"
+                               Width="48" Height="48" IsHitTestVisible="False"/>
+                    </ToggleButton>
+                </StackPanel>
+
+                <!-- Navigation -->
+                <StackPanel Spacing="8" Margin="13,4,13,0">
+                    <ToggleButton Classes="nav"
+                                  IsChecked="{Binding IsServerSelected, Mode=TwoWay}"
+                                  ToolTip.Tip="Server launcher">
+                        <Image Source="{x:Static local:IconSet.Server}"
+                               Width="48" Height="48" IsHitTestVisible="False"/>
+                    </ToggleButton>
+                    <ToggleButton Classes="nav"
+                                  IsChecked="{Binding IsChatSelected, Mode=TwoWay}"
+                                  ToolTip.Tip="Chat (coming soon)">
+                        <Image Source="{x:Static local:IconSet.Chat}"
+                               Width="48" Height="48" IsHitTestVisible="False"/>
+                    </ToggleButton>
+                    <ToggleButton Classes="nav"
+                                  IsChecked="{Binding IsHistorySelected, Mode=TwoWay}"
+                                  ToolTip.Tip="History (coming soon)">
+                        <Image Source="{x:Static local:IconSet.History}"
+                               Width="48" Height="48" IsHitTestVisible="False"/>
+                    </ToggleButton>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- ====== Content ====== -->
+        <Border Grid.Column="1" Background="#1D1F21">
+            <ContentControl Content="{Binding CurrentPage}"/>
+        </Border>
+    </Grid>
+</Window>

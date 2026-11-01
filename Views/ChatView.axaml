@@ -1,0 +1,23 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:NinferLauncher_v_2"
+             x:Class="NinferLauncher_v_2.Views.ChatView">
+
+    <Grid RowDefinitions="Auto,*" Margin="24,20,24,20">
+        <StackPanel Grid.Row="0">
+            <TextBlock Text="CHAT" FontSize="22" FontWeight="Bold"/>
+            <TextBlock Text="Conversation with the server" FontSize="12"
+                       Foreground="#6E7279" Margin="0,2,0,16"/>
+        </StackPanel>
+
+        <Border Grid.Row="1" Classes="card">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="14">
+                <Image Source="{x:Static local:IconSet.Chat}" Width="56" Height="56" Opacity="0.5"/>
+                <TextBlock Text="Chat is coming soon" FontSize="16" FontWeight="SemiBold"
+                                       HorizontalAlignment="Center"/>
+                <TextBlock Text="This section will be added in a later version – communicating with the running server via the API."
+                           FontSize="12" Foreground="#6E7279" HorizontalAlignment="Center"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

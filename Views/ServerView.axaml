@@ -1,0 +1,176 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:NinferLauncher_v_2"
+             xmlns:vm="using:NinferLauncher_v_2.ViewModels"
+             x:Class="NinferLauncher_v_2.Views.ServerView"
+             x:DataType="vm:ServerViewModel">
+
+    <Grid Margin="24,20,24,20" RowDefinitions="Auto,Auto,Auto,*">
+
+        <!-- ====== Header ====== -->
+        <DockPanel Grid.Row="0" Margin="0,0,0,16">
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
+                        VerticalAlignment="Center" HorizontalAlignment="Right">
+                <Border Background="#282A2E" BorderBrush="#373B41" BorderThickness="1"
+                        CornerRadius="14" Padding="12,6">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Ellipse Width="9" Height="9" Fill="{Binding StatusBrush}"/>
+                        <TextBlock Text="{Binding StatusText}" FontWeight="SemiBold"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+            <StackPanel>
+                <TextBlock Text="SERVER LAUNCHER" FontSize="22" FontWeight="Bold"/>
+                <TextBlock Text="NInfer • RTX 4090" FontSize="12"
+                           Foreground="#6E7279" Margin="0,2,0,0"/>
+            </StackPanel>
+        </DockPanel>
+
+        <!-- ====== Server settings ====== -->
+        <Border Grid.Row="1" Classes="card" Margin="0,0,0,12">
+            <Grid ColumnDefinitions="*,*">
+                <!-- left column: directory + model -->
+                <StackPanel Grid.Column="0" Spacing="6" Margin="0,0,18,0">
+                    <TextBlock Classes="cardtitle" Text="NINFER SERVER DIRECTORY"/>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBox Grid.Column="0"
+                                 Text="{Binding Settings.ServerDir, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                        <Button Grid.Column="1" Classes="icon" Width="40" Margin="8,0,0,0"
+                                Command="{Binding BrowseDirCommand}"
+                                ToolTip.Tip="Select server directory">
+                            <Image Source="{x:Static local:IconSet.Folder}" Width="18" Margin="4" Height="18"/>
+                        </Button>
+                    </Grid>
+                    <TextBlock Classes="cardtitle" Text="MODEL FILE" Margin="0,12,0,6"/>
+                    <TextBox Text="{Binding Settings.ModelFile, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                    <TextBlock FontSize="11" Foreground="#6E7279" Margin="0,8,0,0"
+                               Text="{Binding Settings.FullModelPath}"
+                               TextTrimming="CharacterEllipsis"
+                               ToolTip.Tip="{Binding Settings.FullModelPath}"/>
+                </StackPanel>
+
+                <!-- right column: profile, port, token -->
+                <StackPanel Grid.Column="1" Spacing="6" Margin="0,0,0,0">
+                    <TextBlock Classes="cardtitle" Text="SERVER PROFILE"/>
+                    <ComboBox ItemsSource="{Binding Settings.Profiles}"
+                              SelectedIndex="{Binding Settings.ProfileIndex, Mode=TwoWay}">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Name}"/>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <Border Background="#332A1A" BorderBrush="#8A6D1F" BorderThickness="1"
+                            CornerRadius="6" Padding="10,8" Margin="0,10,0,0"
+                            IsVisible="{Binding Settings.SelectedProfile.WarnHighContext}">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <Image Source="{x:Static local:IconSet.Warning}" Width="24" Height="24"
+                                   VerticalAlignment="Center"/>
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="⚠ Context above 240K" FontSize="12"
+                                           FontWeight="SemiBold" Foreground="#E5B94E"/>
+                                <TextBlock FontSize="11" Foreground="#C8A96A" TextWrapping="Wrap"
+                                           Text="On Windows (WDDM) it may not work – DWM and applications hold 1–3 GiB of VRAM. If the server is not listening on the port, pick a profile ≤ 240K."/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                    <TextBlock FontSize="11" Foreground="#6E7279" Margin="0,8,0,0"
+                       Text="Ceilings measured on an RTX 4090 24 GB (--wddm-evictable-budget). Default: 240K + MTP3."/>
+                    <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,12,0,0">
+                        <StackPanel Width="150" Spacing="6">
+                            <TextBlock Classes="cardtitle" Text="PORT"/>
+                            <TextBox Text="{Binding Settings.Port, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                        </StackPanel>
+                    </StackPanel>
+                    <TextBlock FontSize="11" Foreground="#6E7279" Margin="0,12,0,0"
+                               Text="{Binding Settings.UrlText}"
+                               ToolTip.Tip="Server address for the API"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+<!-- ====== Server controls ====== -->
+        <Grid Grid.Row="2" Margin="0,0,0,12" ColumnDefinitions="Auto,Auto,Auto,*,Auto">
+            <Button Grid.Column="0" Classes="primary" MinWidth="130"
+                    Command="{Binding StartServerCommand}"
+                    IsEnabled="{Binding !IsRunning}">
+                <StackPanel Orientation="Horizontal" Spacing="8" Margin="5" HorizontalAlignment="Center">
+                    <Image Source="{x:Static local:IconSet.Start}"/>
+                    <TextBlock Text="Start"/>
+                </StackPanel>
+            </Button>
+            <Button Grid.Column="1" Classes="ghost" MinWidth="130" Margin="10,0,0,0"
+                    Command="{Binding StopServerCommand}"
+                    IsEnabled="{Binding IsRunning}">
+                <StackPanel Orientation="Horizontal" Spacing="8" Margin="5" HorizontalAlignment="Center">
+                    <Image Source="{x:Static local:IconSet.Stop}"/>
+                    <TextBlock Text="Stop"/>
+                </StackPanel>
+            </Button>
+            <Button Grid.Column="2" Classes="ghost" MinWidth="130" Margin="10,0,0,0"
+                    Command="{Binding RestartServerCommand}">
+                <StackPanel Orientation="Horizontal" Spacing="8" Margin="5" HorizontalAlignment="Center">
+                    <Image Source="{x:Static local:IconSet.Restart}"/>
+                    <TextBlock Text="Restart"/>
+                </StackPanel>
+            </Button>
+            <StackPanel Grid.Column="4" Orientation="Horizontal" Margin="5" Spacing="8"
+                        VerticalAlignment="Center" HorizontalAlignment="Right">
+                <Image Source="{x:Static local:IconSet.Link}" Width="18" Height="18"
+                       Opacity="0.6" VerticalAlignment="Center"/>
+                <TextBlock Text="{Binding Settings.UrlText}" FontSize="12" Foreground="#8A8E94"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- ====== Terminal ====== -->
+        <Border Grid.Row="3" Background="#1D1F21"
+                BorderBrush="#373B41" BorderThickness="1"
+                CornerRadius="10" ClipToBounds="True">
+            <DockPanel>
+                <Border DockPanel.Dock="Top" Background="#282A2E"
+                        CornerRadius="9,9,0,0" Padding="14,9">
+                    <DockPanel>
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8">
+                            <TextBlock FontSize="11" Foreground="#6E7279"
+                                       Text="{Binding Terminal.Count, StringFormat='Lines: {0}'}"
+                                       VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding TpsStatusText}" FontSize="11"
+                                       Foreground="#8A8E94" VerticalAlignment="Center"
+                                       ToolTip.Tip="Live throughput from the server log (current and average)"/>
+                            <Button Classes="icon" Command="{Binding ClearLogCommand}"
+                                    ToolTip.Tip="Clear terminal">
+                                <Image Source="{x:Static local:IconSet.Trash}"/>
+                            </Button>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Ellipse Width="8" Height="8" Fill="{Binding StatusBrush}"
+                                     VerticalAlignment="Center"/>
+                            <TextBlock Text="SERVER TERMINAL" FontSize="12"
+                                       FontWeight="SemiBold" Foreground="#8A8E94"
+                                       VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </DockPanel>
+                </Border>
+                <ScrollViewer x:Name="TermScroll" Margin="10"
+                              HorizontalScrollBarVisibility="Auto"
+                              VerticalScrollBarVisibility="Auto">
+                    <ItemsControl x:Name="TermList" ItemsSource="{Binding Terminal}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Text}"
+                                           Foreground="{Binding Brush}"
+                                           FontFamily="Cascadia Mono, Consolas, Courier New"
+                                           FontSize="12.5"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <VirtualizingStackPanel/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
+                </ScrollViewer>
+            </DockPanel>
+        </Border>
+    </Grid>
+</UserControl>

@@ -1,0 +1,23 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:NinferLauncher_v_2"
+             x:Class="NinferLauncher_v_2.Views.HistoryView">
+
+    <Grid RowDefinitions="Auto,*" Margin="24,20,24,20">
+        <StackPanel Grid.Row="0">
+            <TextBlock Text="HISTORIE" FontSize="22" FontWeight="Bold"/>
+            <TextBlock Text="Saved conversations" FontSize="12"
+                       Foreground="#6E7279" Margin="0,2,0,16"/>
+        </StackPanel>
+
+        <Border Grid.Row="1" Classes="card">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="14">
+                <Image Source="{x:Static local:IconSet.History}" Width="56" Height="56" Opacity="0.5"/>
+                <TextBlock Text="History is coming soon" FontSize="16" FontWeight="SemiBold"
+                           HorizontalAlignment="Center"/>
+                <TextBlock Text="Saving and reviewing old chats will be added in a later version."
+                           FontSize="12" Foreground="#6E7279" HorizontalAlignment="Center"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>
