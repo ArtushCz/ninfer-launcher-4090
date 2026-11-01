@@ -100,6 +100,10 @@ Profiles are defined in `Models/ServerSettings.cs` (`ServerProfiles`) and docume
 - Contexts above ~240k tokens may not work under WDDM; the launcher prints a warning for
   profiles over 240k.
 
+## License
+
+Released under the [MIT License](LICENSE) – free to use, modify and distribute.
+
 ## Project layout
 
 ```
