@@ -11,20 +11,20 @@
         WindowStartupLocation="CenterScreen">
 
     <!-- ====== Sidebar ====== -->
-    <Grid ColumnDefinitions="104,*">
+    <Grid ColumnDefinitions="64,*">
         <Border Grid.Column="0"
                 Background="#1D1F21"
                 BorderBrush="#373B41" BorderThickness="0,0,1,0">
             <DockPanel>
                 <!-- Logo at the top -->
-                <StackPanel DockPanel.Dock="Top" Margin="13,18,13,6">
+                <StackPanel DockPanel.Dock="Top" Margin="0,0,0,0">
                     <Image Source="/Icons/NinferLauncherIco.png"
-                           Width="64" Height="150"
+                           Width="32" Height="150"
                            HorizontalAlignment="Center"/>
                 </StackPanel>
 
                 <!-- Bottom: version + settings -->
-                <StackPanel DockPanel.Dock="Bottom" Spacing="8" Margin="13,10,13,16">
+                <StackPanel DockPanel.Dock="Bottom" Spacing="8" Margin="-6,0,0,0">
                     <TextBlock Text="v2.0"
                                FontSize="11" Foreground="#4A4E55"
                                HorizontalAlignment="Center"/>
@@ -32,29 +32,35 @@
                                   IsChecked="{Binding IsSettingsSelected, Mode=TwoWay}"
                                   ToolTip.Tip="Settings">
                         <Image Source="{x:Static local:IconSet.Settings}"
-                               Width="48" Height="48" IsHitTestVisible="False"/>
+                               Width="24" Height="24" IsHitTestVisible="False"/>
                     </ToggleButton>
                 </StackPanel>
 
                 <!-- Navigation -->
-                <StackPanel Spacing="8" Margin="13,4,13,0">
+                <StackPanel Spacing="0" Margin="-6,0,0,0">
                     <ToggleButton Classes="nav"
                                   IsChecked="{Binding IsServerSelected, Mode=TwoWay}"
                                   ToolTip.Tip="Server launcher">
                         <Image Source="{x:Static local:IconSet.Server}"
-                               Width="48" Height="48" IsHitTestVisible="False"/>
+                               Width="24" Height="24" IsHitTestVisible="False"/>
                     </ToggleButton>
                     <ToggleButton Classes="nav"
                                   IsChecked="{Binding IsChatSelected, Mode=TwoWay}"
-                                  ToolTip.Tip="Chat (coming soon)">
+                                  ToolTip.Tip="Chat">
                         <Image Source="{x:Static local:IconSet.Chat}"
-                               Width="48" Height="48" IsHitTestVisible="False"/>
+                               Width="24" Height="24" IsHitTestVisible="False"/>
                     </ToggleButton>
                     <ToggleButton Classes="nav"
                                   IsChecked="{Binding IsHistorySelected, Mode=TwoWay}"
                                   ToolTip.Tip="History (coming soon)">
                         <Image Source="{x:Static local:IconSet.History}"
-                               Width="48" Height="48" IsHitTestVisible="False"/>
+                               Width="24" Height="24" IsHitTestVisible="False"/>
+                    </ToggleButton>
+                    <ToggleButton Classes="nav"
+                                  IsChecked="{Binding IsProfilesSelected, Mode=TwoWay}"
+                                  ToolTip.Tip="Server profiles">
+                        <Image Source="{x:Static local:IconSet.ServerProfile}"
+                               Width="24" Height="24" IsHitTestVisible="False"/>
                     </ToggleButton>
                 </StackPanel>
             </DockPanel>

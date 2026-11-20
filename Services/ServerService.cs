@@ -36,7 +36,7 @@ public class ServerService : IDisposable
     /// <summary>Server state change – may be raised from any thread.</summary>
     public event Action? StateChanged;
 
-    public void Start(string dir, string modelPath, int port, ServerProfile profile)
+    public void Start(string dir, string modelPath, int port, ServerProfile profile, bool wddmEvictableBudget)
     {
         lock (_sync)
         {
@@ -78,7 +78,7 @@ public class ServerService : IDisposable
                 StandardOutputEncoding = Encoding.UTF8,
                 StandardErrorEncoding = Encoding.UTF8,
             };
-            foreach (var a in ServerProfiles.BuildArgs(profile, modelPath, port, dir))
+            foreach (var a in ServerProfiles.BuildArgs(profile, modelPath, port, dir, wddmEvictableBudget))
                 psi.ArgumentList.Add(a);
 
             var p = new Process { StartInfo = psi };

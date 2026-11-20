@@ -20,9 +20,12 @@ Built with **Avalonia UI 12** + **CommunityToolkit.Mvvm**, targeting **.NET 10**
   - <span style="color:#C8A24B">amber – Usable and tested</span> (fast, low-VRAM),
   - <span style="color:#569CD6">blue – Benchmarks</span> (run via `ninfer_bench.exe`),
   - <span style="color:#A54242">red – Not tested / not working</span> (known limits, low VRAM).
-- Live terminal with noisy-log filtering and a prefill/decode tok/s readout.
-- Live configuration (server dir, model file, port) persisted to
-  `%AppData%\NinferLauncher\settings.json`.
+- Live terminal with noisy-log filtering, a prefill/decode tok/s readout and
+  **select-and-copy**: individual log lines can be selected with the mouse and copied,
+  and a **Copy all** button (in the terminal header) copies the whole log to the clipboard.
+- Live configuration (server dir, model file, port) persisted to a local
+  `settings.json` file next to the exe (falls back to
+  `%AppData%\NinferLauncher\settings.json` if the exe's folder is not writable).
 
 ## Requirements
 
@@ -98,7 +101,10 @@ Profiles are defined in `Models/ServerSettings.cs` (`ServerProfiles`) and docume
 - MTP speculation (`--spec mtp --draft-tokens N --lm-head-draft`),
 - KV cache dtype (`rk2v4-e8`, `rk4v4-e8`, `rk4v4`, `rk8v4`, `int8`),
 - vision mode (none / 4k / 8k), and a fixed set of runtime flags
-  (`--wddm-evictable-budget`, `--preserve-thinking`, `--max-concurrency 1`, ...).
+  (`--preserve-thinking`, `--max-concurrency 1`, ...).
+- `--wddm-evictable-budget` is optional – a checkbox on the server page adds it
+  at startup when ticked (recommended on Windows: the driver can reclaim evictable
+  VRAM pages under pressure instead of the server failing).
 
 **Notes for Windows (WDDM):**
 
@@ -127,18 +133,46 @@ higher group once measured.
 
 Released under the [MIT License](LICENSE) – free to use, modify and distribute.
 
+## Custom profiles
+
+Profiles are **not hard-coded** – they live in `profiles.json` next to the exe
+(created automatically on first run). Edit it in any text editor and restart the
+launcher to add, remove or reorder entries:
+
+```jsonc
+{
+  "profiles": [
+    {
+      "name": "My 100K profile",        // shown in the dropdown
+      "group": "recommended",           // recommended | usable | bench | untested (dropdown section)
+      "maxContext": 100000,             // tokens (also passed as --max-context / --kv-capacity)
+      "kvDtype": "rk2v4-e8",            // bf16 | int8 | rk2v4-e8 | rk4v4-e8 | rk4v4 | rk8v4
+      "mtpSpec": true,                  // MTP speculation on/off (false = MTP0)
+      "draftTokens": 4,                 // draft tokens per step (used when mtpSpec is true)
+      "vision": "none",                 // none | tokens4096 | tokens8192
+      "isBench": false,                 // true → runs ninfer_bench.exe
+      "note": "optional comment for yourself"
+    }
+  ]
+}
+```
+
+- Malformed entries are skipped, an invalid file falls back to the built-in profiles – the app never crashes on a typo.
+- Key casing is case-insensitive; unknown keys are ignored.
+
 ## Project layout
 
 ```
 ├── App.axaml / App.axaml.cs      # Avalonia app entry + global styles
 ├── Program.cs                    # Main / BuildAvaloniaApp
 ├── ViewLocator.cs                # ViewModel → View mapping
+├── profiles.json                 # user-editable server profiles (next to the exe)
 ├── Models/
-│   └── ServerSettings.cs         # Settings + profiles + argument builder
+│   └── ServerSettings.cs         # settings/profile models + profiles.json loader
 ├── Services/
 │   ├── ServerService.cs          # process start/stop, stdout capture
 │   ├── LogFilter.cs              # terminal log filtering / tok/s parsing
-│   └── SettingsStore.cs          # %AppData%\NinferLauncher\settings.json
+│   └── SettingsStore.cs          # local settings.json next to the exe
 ├── ViewModels/                   # MVVM view models
 ├── Views/                        # .axaml views
 ├── Icons/  and  Assets/          # embedded icons / assets
@@ -149,5 +183,8 @@ Released under the [MIT License](LICENSE) – free to use, modify and distribute
 - **"Adresář serveru neexistuje" / "Model nenalezen"** – fix the server directory / model
   path in Settings to the real location of the Ninfer folder and model file.
 - **Port in use** – change the port in Settings or stop other processes bound to it.
+- **`--wddm-evictable-budget` unknown / "unknown option" at startup** – untick the
+  `--wddm-evictable-budget` checkbox on the server page; older builds do not know the flag.
+  Newer builds benefit from it under VRAM pressure (WDDM).
 - **Server starts but no response** – for high-context (>240k) profiles fall back to a
   smaller context profile; on WDDM very large contexts can fail to bind.

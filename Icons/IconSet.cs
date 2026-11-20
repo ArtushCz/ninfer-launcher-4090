@@ -26,6 +26,7 @@ public static class IconSet
     public static IImage History => Get("history_large.png");
     public static IImage Settings => Get("settings_large.png");
     public static IImage Server   => Get("server.png");
+    public static IImage ServerProfile => Get("server_profile.png");
 
     // klikaci akce / tlacitka (16 px) – verze _mini, jinak zakladni
     public static IImage Start   => Get("check_mini.png");
@@ -34,6 +35,7 @@ public static class IconSet
     public static IImage Send    => Get("send.png");
     public static IImage Trash   => Get("trash_mini.png");
     public static IImage Save    => Get("save_mini.png");
+    public static IImage Copy    => Get("copy_mini.png");
 
     // samostatne ikony (48–50 px)
     public static IImage Eye        => Get("eye.png");

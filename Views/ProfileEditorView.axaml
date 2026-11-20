@@ -1,0 +1,142 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:NinferLauncher_v_2"
+             xmlns:controls="using:NinferLauncher_v_2.Controls"
+             xmlns:vm="using:NinferLauncher_v_2.ViewModels"
+             x:Class="NinferLauncher_v_2.Views.ProfileEditorView"
+             x:DataType="vm:ProfileEditorViewModel">
+    <Grid Margin="24,20,24,20" RowDefinitions="Auto,*">
+        <StackPanel Grid.Row="0" Margin="0,0,0,16">
+            <TextBlock Text="SERVER PROFILES" FontSize="22" FontWeight="Bold"/>
+            <TextBlock Text="Profiles are stored in profiles.json next to the launcher"
+                       FontSize="12" Foreground="#6E7279" Margin="0,2,0,0"/>
+        </StackPanel>
+
+        <Border Grid.Row="1" Classes="card" VerticalAlignment="Stretch">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="28">
+                <StackPanel Grid.Column="0" Spacing="14">
+                    <StackPanel Spacing="6">
+                        <TextBlock Classes="cardtitle" Text="PROFILE"/>
+                        <ComboBox ItemsSource="{Binding Items}"
+                                  SelectedItem="{Binding Selected, Mode=TwoWay}"
+                                  HorizontalAlignment="Stretch">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Name}" TextWrapping="Wrap"
+                                               VerticalAlignment="Center"/>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                    </StackPanel>
+
+                    <StackPanel Spacing="6">
+                        <TextBlock Classes="cardtitle" Text="NAME"/>
+                        <TextBox Text="{Binding Selected.Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                    </StackPanel>
+
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="14">
+                        <StackPanel Grid.Column="0" Spacing="6">
+                            <TextBlock Classes="cardtitle" Text="SECTION (GROUP)"/>
+                            <ComboBox ItemsSource="{x:Static vm:ProfileEditorViewModel.GroupOptions}"
+                                      SelectedItem="{Binding Selected.Group, Mode=TwoWay}"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Spacing="6">
+                            <TextBlock Classes="cardtitle" Text="VISION"/>
+                            <ComboBox ItemsSource="{x:Static vm:ProfileEditorViewModel.VisionOptions}"
+                                      SelectedItem="{Binding Selected.Vision, Mode=TwoWay}"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="14">
+                        <StackPanel Grid.Column="0" Spacing="6">
+                            <TextBlock Classes="cardtitle" Text="MAX CONTEXT (TOKENS)"/>
+                            <TextBox Text="{Binding Selected.MaxContext, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Spacing="6">
+                            <TextBlock Classes="cardtitle" Text="KV CACHE DTYPE"/>
+                            <ComboBox ItemsSource="{x:Static vm:ProfileEditorViewModel.KvOptions}"
+                                      SelectedItem="{Binding Selected.KvDtype, Mode=TwoWay}"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <StackPanel Spacing="10">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <CheckBox IsChecked="{Binding Selected.MtpSpec, Mode=TwoWay}" VerticalAlignment="Center"/>
+                            <TextBlock Text="MTP speculation (mtpSpec)" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <CheckBox IsChecked="{Binding Selected.IsBench, Mode=TwoWay}" VerticalAlignment="Center"/>
+                            <TextBlock Text="Bench profile - run ninfer_bench.exe" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="14">
+                        <StackPanel Grid.Column="0" Spacing="6">
+                            <TextBlock Classes="cardtitle" Text="DRAFT TOKENS (MTP)"/>
+                            <ComboBox ItemsSource="{x:Static vm:ProfileEditorViewModel.DraftTokenOptions}"
+                                      SelectedItem="{Binding Selected.DraftTokens, Mode=TwoWay}"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Spacing="6">
+                            <TextBlock Classes="cardtitle" Text="NOTE (OPTIONAL)"/>
+                            <TextBox Text="{Binding Selected.Note, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <StackPanel Spacing="0" Margin="0,0,0,0">
+                        <StackPanel Orientation="Horizontal" Spacing="14">
+                            <controls:IconButton Command="{Binding SaveProfileCommand}"
+                             Height="32" MinWidth="150" CornerRadius="6" Padding="0,0" IconSize="16"
+                             Image="{x:Static local:IconSet.Save}"
+                             Label="Save profile" LabelBrush="#C5C8C6"
+                             Background="#A54242" HighlightBrush="#B54E4E" PressedHighlightBrush="#33373E"/>
+                            <controls:IconButton Command="{Binding AddProfileCommand}" 
+                             Height="32" MinWidth="150" CornerRadius="6" Padding="0,0" IconSize="16"
+                             Image="{x:Static local:IconSet.FolderPlus}"
+                             Label="New profile" LabelBrush="#C5C8C6"
+                             BorderBrush="#373B41" HighlightBrush="#33373E" PressedHighlightBrush="#33373E"/>
+                        </StackPanel>
+                        <TextBlock Text="{Binding Status}" FontSize="12"
+                                   Foreground="#6E7279" VerticalAlignment="Center"
+                                   TextWrapping="Wrap" HorizontalAlignment="Left"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Spacing="14" MaxWidth="360" VerticalAlignment="Top" Margin="0,4,0,0">
+                    <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="#C5C8C6" Text="FIELD REFERENCE"/>
+                    <StackPanel Spacing="2">
+                        <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="#A0A4A8">SECTION (GROUP)</TextBlock>
+                        <TextBlock FontSize="11" Foreground="#8A8E94" TextWrapping="Wrap" Text="Categorises the profile in the launcher dropdown. recommended = tested safe, usable = tested smaller context, bench = ninfer_bench.exe, untested = unverified."/>
+                    </StackPanel>
+                    <StackPanel Spacing="2">
+                        <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="#A0A4A8">VISION</TextBlock>
+                        <TextBlock FontSize="11" Foreground="#8A8E94" TextWrapping="Wrap" Text="none = text-only. tokens4096 = up to 4096 vision tokens (images). tokens8192 = up to 8192. Higher = more VRAM."/>
+                    </StackPanel>
+                    <StackPanel Spacing="2">
+                        <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="#A0A4A8">MAX CONTEXT (TOKENS)</TextBlock>
+                        <TextBlock FontSize="11" Foreground="#8A8E94" TextWrapping="Wrap" Text="Max tokens per request (input + output). Higher = longer conversations, more VRAM. Above 240K may fail on Windows (WDDM)."/>
+                    </StackPanel>
+                    <StackPanel Spacing="2">
+                        <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="#A0A4A8">KV CACHE DTYPE</TextBlock>
+                        <TextBlock FontSize="11" Foreground="#8A8E94" TextWrapping="Wrap" Text="Compresses key-value cache. rk2v4-e8 = most compressed (least VRAM), rk4v4-e8 / rk4v4 = 4-bit, rk8v4 = 8-bit, int8 = 8-bit plain, bf16 = full precision (most VRAM)."/>
+                    </StackPanel>
+                    <StackPanel Spacing="2">
+                        <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="#A0A4A8">MTP SPECULATION</TextBlock>
+                        <TextBlock FontSize="11" Foreground="#8A8E94" TextWrapping="Wrap" Text="Multi-Token Prediction: the model drafts future tokens to reduce forward passes. Speeds up generation when the model supports it."/>
+                    </StackPanel>
+                    <StackPanel Spacing="2">
+                        <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="#A0A4A8">DRAFT TOKENS (MTP)</TextBlock>
+                        <TextBlock FontSize="11" Foreground="#8A8E94" TextWrapping="Wrap" Text="Tokens drafted per MTP step. More = potentially faster, more VRAM. Typical: 3-5. Only used when MTP is enabled."/>
+                    </StackPanel>
+                    <StackPanel Spacing="2">
+                        <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="#A0A4A8">BENCH PROFILE</TextBlock>
+                        <TextBlock FontSize="11" Foreground="#8A8E94" TextWrapping="Wrap" Text="Launches ninfer_bench.exe instead of a server. Runs prefill at profile context + 128-token decode to measure throughput."/>
+                    </StackPanel>
+                    <StackPanel Spacing="2">
+                        <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="#A0A4A8">NOTE</TextBlock>
+                        <TextBlock FontSize="11" Foreground="#8A8E94" TextWrapping="Wrap" Text="Free-form comment stored in profiles.json. Not used by the launcher - for your reference."/>
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

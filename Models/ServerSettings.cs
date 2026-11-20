@@ -1,11 +1,16 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Text.Encodings.Web;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Text.Unicode;
 using Avalonia.Media;
 
 namespace NinferLauncher_v_2.Models;
 
-/// <summary>Saved settings (persisted to %AppData%\NinferLauncher\settings.json).</summary>
+/// <summary>Saved settings (persisted to a local settings.json next to the exe).</summary>
 public class ServerSettings
 {
     public string ServerDir { get; set; } = @"F:\LLM\ninfer-rtx4090-windows-x64-v1.2.0";
@@ -13,9 +18,14 @@ public class ServerSettings
     public string Port { get; set; } = "11434";
     public string Token { get; set; } = "";
     public int ProfileIndex { get; set; }
+
+    /// <summary>Checked on the server page → pass <c>--wddm-evictable-budget</c> at startup:
+    /// the WDDM driver can reclaim evictable VRAM pages under pressure instead of failing.</summary>
+    public bool WddmEvictableBudget { get; set; } = true;
 }
 
 /// <summary>Vision token mode (see CustomProfiles.txt: Text-Only / Vision 4k / Vision 8k).</summary>
+[JsonConverter(typeof(LowercaseEnumConverter<VisionMode>))]
 public enum VisionMode
 {
     None,
@@ -24,6 +34,7 @@ public enum VisionMode
 }
 
 /// <summary>Colour-coded section a profile is shown under in the profile dropdown.</summary>
+[JsonConverter(typeof(LowercaseEnumConverter<ProfileGroup>))]
 public enum ProfileGroup
 {
     Recommended, // green – "Recommended and tested"
@@ -43,10 +54,13 @@ public sealed record ServerProfile(
     bool IsBench = false,
     ProfileGroup Group = ProfileGroup.Untested)
 {
+    /// <summary>Optional comment from profiles.json (not used by the launcher).</summary>
+    public string? Note { get; set; }
+
     public string ExeName => IsBench ? "ninfer_bench.exe" : "ninfer-serve.exe";
 
     /// <summary>Warning: contexts above 240K may not work on Windows (WDDM).</summary>
-    public bool WarnHighContext => MaxContext > 245760;
+    public bool WarnHighContext => MaxContext > ServerProfiles.SafeContextLimit;
 }
 
 /// <summary>One row of the profile dropdown: a profile with its group's faint "undertone" tint.</summary>
@@ -71,10 +85,16 @@ public static class ServerProfiles
     /// <summary>Safe limit – contexts above this may stop working on Windows (WDDM).</summary>
     public const int SafeContextLimit = 245760;
 
-    public static readonly ServerProfile[] All =
+    /// <summary>User-editable profile list (lives next to the exe, like settings.json).</summary>
+    public const string ProfilesFileName = "profiles.json";
+
+    /// <summary>Built-in profiles – used when <c>profiles.json</c> is missing, empty or invalid.</summary>
+    public static readonly ServerProfile[] Builtin =
     {
         // ===== Default: 240K + MTP3 (vision 4k) =====
         new("Agent - 240K Context + MTP3", 245760, true, 3, "rk2v4-e8", VisionMode.Tokens4096, false, ProfileGroup.Recommended),
+        // ===== Full context: 256K • no speculation (MTP0) =====
+        new("Full context 256K • rk2v4-e8 (2-bit) • MTP0", 262144, false, 0, "rk2v4-e8", VisionMode.None, false, ProfileGroup.Recommended),
         // ===== Default-text: 64K Context + MTP4 =====
         new("Text - 64K Context + MTP4", 65_536, true, 4, "rk2v4-e8", VisionMode.None, false, ProfileGroup.Recommended),
         
@@ -120,6 +140,157 @@ public static class ServerProfiles
        
     };
 
+/// <summary>Active profile list: from <c>profiles.json</c> next to the exe,
+    /// falling back to <see cref="Builtin"/> when the file is missing or invalid.</summary>
+    public static ServerProfile[] All { get; private set; } = Builtin;
+
+    /// <summary>Parse is case-insensitive so hand-edited files (lower-case keys) work too.</summary>
+    static readonly JsonSerializerOptions ParseOptions = new() { PropertyNameCaseInsensitive = true };
+    static readonly JsonSerializerOptions WriteOptions = new()
+    {
+        WriteIndented = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        // allow every BMP printable code point – the file stays human readable, no \uXXXX escapes
+        Encoder = JavaScriptEncoder.Create(new[] { new System.Text.Unicode.UnicodeRange(0x20, 0xFFE0) }),
+        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
+    };
+
+    static ServerProfiles()
+    {
+        try
+        {
+            string path = Path.Combine(AppContext.BaseDirectory, ProfilesFileName);
+            if (File.Exists(path))
+            {
+                var parsed = JsonSerializer.Deserialize<ProfileFile>(File.ReadAllText(path), ParseOptions);
+                if (parsed?.Profiles is { Count: > 0 })
+                {
+                    var loaded = new List<ServerProfile>(parsed.Profiles.Count);
+                    foreach (var p in parsed.Profiles)
+                    {
+                        if (string.IsNullOrWhiteSpace(p.Name) || p.MaxContext <= 0 ||
+                            string.IsNullOrWhiteSpace(p.KvDtype))
+                            continue; // skip malformed entries, keep the rest
+                        var prof = new ServerProfile(
+                            p.Name.Trim(), p.MaxContext, p.MtpSpec, p.DraftTokens,
+                            p.KvDtype, p.Vision, p.IsBench, p.Group);
+                        prof.Note = p.Note;
+                        loaded.Add(prof);
+                    }
+
+                    if (loaded.Count > 0)
+                    {
+                        All = loaded.ToArray();
+                        return;
+                    }
+                }
+            }
+            else
+            {
+                WriteProfilesFile(path); // first run: create an editable file from the built-ins
+            }
+        }
+        catch
+        {
+            // unreadable / invalid file – keep the built-in profiles
+        }
+    }
+
+    /// <summary>Help text written at the top of <c>profiles.json</c>.</summary>
+    internal const string ReadmeText =
+        "Ninfer launcher – server profiles. Edit this file and restart the launcher.\r\n" +
+        "  group   = dropdown section: recommended (green, tested) | usable (amber, tested)\r\n" +
+        "            | bench (blue, run via ninfer_bench.exe) | untested (red)\r\n" +
+        "  vision  = none | tokens4096 | tokens8192\r\n" +
+        "  mtpSpec = true/false – MTP speculation (draftTokens = drafts per step; false means MTP0)\r\n" +
+        "  isBench = true → run ninfer_bench.exe instead of ninfer-serve.exe\r\n";
+
+    /// <summary>Writes the built-in profiles as a human-editable <c>profiles.json</c>.</summary>
+    internal static void WriteProfilesFile(string path)
+    {
+        try
+        {
+            var doc = new ProfileFile
+            {
+            Readme = ReadmeText,
+            Profiles = Builtin.Select(p => new ProfileDto
+            {
+                Name = p.Name,
+                Group = p.Group,
+                MaxContext = p.MaxContext,
+                KvDtype = p.KvDtype,
+                MtpSpec = p.MtpSpec,
+                DraftTokens = p.DraftTokens,
+                Vision = p.Vision,
+                IsBench = p.IsBench,
+                Note = p.Note,
+            }).ToList(),
+            };
+            File.WriteAllText(path, SerializeDoc(doc));
+        }
+        catch
+        {
+            // read-only directory – run without a local profiles file
+        }
+    }
+
+    /// <summary>Persists the current <see cref="All"/> list back to <c>profiles.json</c>
+    /// (used by the profile editor). Fails silently if the directory is read-only.</summary>
+    public static void Persist()
+    {
+        try
+        {
+            var doc = new ProfileFile
+            {
+                Readme = ReadmeText,
+                Profiles = All.Select(p => new ProfileDto
+                {
+                    Name = p.Name,
+                    Group = p.Group,
+                    MaxContext = p.MaxContext,
+                    KvDtype = p.KvDtype,
+                    MtpSpec = p.MtpSpec,
+                    DraftTokens = p.DraftTokens,
+                    Vision = p.Vision,
+                    IsBench = p.IsBench,
+                    Note = p.Note,
+                }).ToList(),
+            };
+            File.WriteAllText(Path.Combine(AppContext.BaseDirectory, ProfilesFileName), SerializeDoc(doc));
+        }
+        catch
+        {
+            // not fatal – the in-memory list still works for this session
+        }
+    }
+
+    static string SerializeDoc(ProfileFile doc)
+    {
+        // JavaScriptEncoder insists on escaping '+' even though it needs no escaping in JSON
+        return JsonSerializer.Serialize(doc, WriteOptions).Replace("\\u002B", "+");
+    }
+
+    /// <summary>Replaces <paramref name="original"/> with <paramref name="profile"/> (or appends
+    /// a brand-new one) so the launcher's dropdown picks the change up immediately.</summary>
+    public static void AddOrReplace(ServerProfile profile, ServerProfile? original)
+    {
+        var list = All.ToList();
+        if (original is not null)
+        {
+            int i = list.FindIndex(x => ReferenceEquals(x, original));
+            if (i >= 0)
+            {
+                list[i] = profile;
+                All = list.ToArray();
+                return;
+            }
+        }
+        list.Add(profile);
+        All = list.ToArray();
+    }
+
+    /// <summary>Invalidates the cached dropdown rows (call after the profile list changed).</summary>
+    public static void RefreshDisplayRows() => _displayRows = null;
     /// <summary>Dropdown rows – a flat list; each row carries its group's faint "undertone" tint.</summary>
     public static IReadOnlyList<ProfileRow> DisplayRows => _displayRows ??= BuildDisplayRows();
     static IReadOnlyList<ProfileRow>? _displayRows;
@@ -143,8 +314,11 @@ public static class ServerProfiles
     /// <summary>Arguments for the selected profile. Bench profiles target <c>ninfer_bench.exe</c>
     /// (a different CLI); everything else targets <c>ninfer-serve.exe</c>.
     /// <paramref name="serverDir"/> is the folder that holds the ninfer binaries – the bench
-    /// reads its token-id corpus from <c>&lt;serverDir&gt;\bench\fixtures\bench_corpus.ids</c>.</summary>
-    public static List<string> BuildArgs(ServerProfile profile, string modelPath, int port, string serverDir)
+    /// reads its token-id corpus from <c>&lt;serverDir&gt;\bench\fixtures\bench_corpus.ids</c>.
+    /// <paramref name="wddmEvictableBudget"/> (ticked on the server page) adds
+    /// <c>--wddm-evictable-budget</c>: the WDDM driver may reclaim evictable VRAM pages
+    /// under pressure instead of failing.</summary>
+    public static List<string> BuildArgs(ServerProfile profile, string modelPath, int port, string serverDir, bool wddmEvictableBudget)
     {
         if (profile.IsBench)
             return BuildBenchArgs(profile, modelPath, serverDir);
@@ -165,13 +339,14 @@ public static class ServerProfiles
             "--kv-dtype", profile.KvDtype,
             "--max-context", profile.MaxContext.ToString(),
             "--kv-capacity", profile.MaxContext.ToString(),
-            "--wddm-evictable-budget",
             "--preserve-thinking",
             "--max-concurrency", "1",
             "--max-pending-requests", "16",
             "--pending-timeout-ms", "600000",
             "--prefill-chunk", "1024",
         });
+        if (wddmEvictableBudget)
+            args.Add("--wddm-evictable-budget");
         if (profile.MtpSpec)
             args.AddRange(new[] { "--spec", "mtp", "--draft-tokens", profile.DraftTokens.ToString(), "--lm-head-draft" });
         return args;
@@ -234,8 +409,9 @@ public static class ServerProfiles
     };
 }
 
-/// <summary>A single line of output in the terminal.</summary>
-public class TerminalLine
+/// <summary>A single line of output in the terminal. Selection state is observable so the
+/// terminal view can highlight the clicked / Shift+click-selected range.</summary>
+public class TerminalLine : System.ComponentModel.INotifyPropertyChanged
 {
     public string Text { get; }
     public bool IsError { get; }
@@ -243,6 +419,27 @@ public class TerminalLine
 
     static readonly Avalonia.Media.SolidColorBrush TextBrush = new(Avalonia.Media.Color.Parse("#C5C8C6"));
     static readonly Avalonia.Media.SolidColorBrush ErrorBrush = new(Avalonia.Media.Color.Parse("#A54242"));
+    // subtle blue highlight for a selected line; transparent otherwise (still hit-testable)
+    static readonly Avalonia.Media.IBrush SelectionBrush =
+        new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.FromArgb(90, 80, 130, 200));
+    static readonly Avalonia.Media.IBrush NoSelectionBrush = Avalonia.Media.Brushes.Transparent;
+
+    private bool _isSelected;
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set
+        {
+            if (_isSelected == value)
+                return;
+            _isSelected = value;
+            OnPropertyChanged(nameof(IsSelected));
+            OnPropertyChanged(nameof(BackgroundBrush));
+        }
+    }
+
+    /// <summary>Row background: a highlight while the line is selected, otherwise transparent.</summary>
+    public Avalonia.Media.IBrush BackgroundBrush => IsSelected ? SelectionBrush : NoSelectionBrush;
 
     public TerminalLine(string text, bool isError = false)
     {
@@ -250,4 +447,64 @@ public class TerminalLine
         IsError = isError;
         Brush = isError ? ErrorBrush : TextBrush;
     }
+
+    public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
+    void OnPropertyChanged(string propertyName)
+        => PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(propertyName));
+}
+
+/// <summary>Serializes enum members as lowercase names ("recommended", "tokens4096");
+/// deserialization is case-insensitive.</summary>
+public sealed class LowercaseEnumConverter<TEnum> : JsonConverter<TEnum>
+    where TEnum : struct, Enum
+{
+    public override TEnum Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        string? s = reader.GetString();
+        if (s is null)
+            return (TEnum)Enum.GetValues<TEnum>()[0];
+        return (TEnum)Enum.Parse(typeof(TEnum), s, ignoreCase: true);
+    }
+
+    public override void Write(Utf8JsonWriter writer, TEnum value, JsonSerializerOptions options)
+        => writer.WriteStringValue(value.ToString().ToLowerInvariant());
+}
+
+/// <summary>Shape of the user-editable <c>profiles.json</c> file (next to the exe).</summary>
+public sealed class ProfileFile
+{
+    /// <summary>Human-readable help text shown at the top of the file (not parsed).</summary>
+    public string? Readme { get; set; }
+    public List<ProfileDto> Profiles { get; set; } = new();
+}
+
+/// <summary>One entry in <c>profiles.json</c> – mirrors <see cref="ServerProfile"/>.</summary>
+public sealed class ProfileDto
+{
+    /// <summary>Shown name in the dropdown.</summary>
+    public string Name { get; set; } = "";
+
+    /// <summary>Dropdown section: "recommended" | "usable" | "bench" | "untested".</summary>
+    public ProfileGroup Group { get; set; } = ProfileGroup.Untested;
+
+    /// <summary>Max context tokens (also passed as --max-context / --kv-capacity).</summary>
+    public int MaxContext { get; set; }
+
+    /// <summary>KV cache dtype: bf16 | int8 | rk2v4-e8 | rk4v4-e8 | rk4v4 | rk8v4.</summary>
+    public string KvDtype { get; set; } = "rk2v4-e8";
+
+    /// <summary>true → MTP speculation enabled (with <see cref="DraftTokens"/>).</summary>
+    public bool MtpSpec { get; set; }
+
+    /// <summary>Draft tokens per speculation step (used when <see cref="MtpSpec"/> is true).</summary>
+    public int DraftTokens { get; set; }
+
+    /// <summary>Vision budget: "none" | "tokens4096" | "tokens8192".</summary>
+    public VisionMode Vision { get; set; } = VisionMode.None;
+
+    /// <summary>true → run <c>ninfer_bench.exe</c> instead of <c>ninfer-serve.exe</c>.</summary>
+    public bool IsBench { get; set; }
+
+    /// <summary>Free-form comment for yourself (not used by the launcher).</summary>
+    public string? Note { get; set; }
 }

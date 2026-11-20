@@ -36,6 +36,7 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] string _port;
     [ObservableProperty] string _token;
     [ObservableProperty] int _profileIndex;
+    [ObservableProperty] bool _wddmEvictableBudget = true;
     [ObservableProperty] string _statusMessage = "";
 
     Avalonia.Controls.Window? _window;
@@ -58,8 +59,10 @@ public partial class SettingsViewModel : ViewModelBase
         }
     }
 
-    /// <summary>Dropdown rows (section headers + profiles), shared by both pages.</summary>
-    public IReadOnlyList<ProfileRow> ProfileRows { get; } = ServerProfiles.DisplayRows;
+    /// <summary>Dropdown rows (section headers + profiles), shared by both pages.
+    /// Re-assigned by <see cref="RefreshProfileRows"/> after the profile list changes
+    /// (e.g. from the Server profiles page).</summary>
+    [ObservableProperty] IReadOnlyList<ProfileRow> _profileRows = ServerProfiles.DisplayRows;
 
     private ProfileRow? _selectedRow;
     /// <summary>Currently highlighted dropdown row. Picking a profile row updates
@@ -130,6 +133,7 @@ public partial class SettingsViewModel : ViewModelBase
         Port = s.Port;
         Token = s.Token;
         ProfileIndex = s.ProfileIndex;
+        WddmEvictableBudget = s.WddmEvictableBudget;
         ResyncSelectedRow();
         ScanModelFiles();
         OnPropertyChanged(nameof(FullModelPath));
@@ -156,6 +160,7 @@ public partial class SettingsViewModel : ViewModelBase
             Port = Port,
             Token = Token,
             ProfileIndex = ProfileIndex,
+            WddmEvictableBudget = WddmEvictableBudget,
         });
         StatusMessage = "Settings saved ✓";
         return true;
@@ -199,6 +204,15 @@ public partial class SettingsViewModel : ViewModelBase
 
     [RelayCommand]
     void SaveSettings() => Save();
+
+    /// <summary>Rebuilds the profile dropdown after <c>ServerProfiles.All</c> changed
+    /// (profile added / edited in the Server profiles page).</summary>
+    public void RefreshProfileRows()
+    {
+        ProfileRows = ServerProfiles.DisplayRows;
+        ResyncSelectedRow();
+        OnPropertyChanged(nameof(SelectedRow));
+    }
 
     /// <summary>Gives the view-model a window so the OS file picker can be opened.</summary>
     public void AttachWindow(Window window) => _window = window;
