@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="using:NinferLauncher_v_2"
+             xmlns:controls="using:NinferLauncher_v_2.Controls"
              xmlns:vm="using:NinferLauncher_v_2.ViewModels"
              x:Class="NinferLauncher_v_2.Views.ServerView"
              x:DataType="vm:ServerViewModel">
@@ -37,12 +38,12 @@
                                Text="NINFER SERVER DIRECTORY"/>
                     <TextBox Grid.Row="1" Grid.Column="0"
                              Text="{Binding Settings.ServerDir, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                    <Button Grid.Row="1" Grid.Column="1" Classes="icon" Width="40" Margin="8,0,0,0"
-                            VerticalAlignment="Center"
+                    <controls:IconButton Grid.Row="1" Grid.Column="1" Width="40" Height="36" Margin="8,0,0,0"
+                            VerticalAlignment="Center" CornerRadius="6" Padding="12"
                             Command="{Binding BrowseDirCommand}"
-                            ToolTip.Tip="Select server directory">
-                        <Image Source="{x:Static local:IconSet.Folder}" Width="18" Margin="4" Height="18"/>
-                    </Button>
+                            Image="{x:Static local:IconSet.Folder}" IconSize="16"
+                            ToolTip.Tip="Select server directory"
+                            HighlightBrush="#33373E" PressedHighlightBrush="#33373E"/>
                     <TextBlock Grid.Row="2" Grid.ColumnSpan="2" Classes="cardtitle"
                                Text="MODEL FILE" Margin="0,12,0,6"/>
                     <ComboBox Grid.Row="3" Grid.Column="0"
@@ -58,12 +59,12 @@
                             </DataTemplate>
                         </ComboBox.ItemTemplate>
                     </ComboBox>
-                    <Button Grid.Row="3" Grid.Column="1" Classes="icon" Width="40" Margin="8,0,0,0"
-                            VerticalAlignment="Center"
+                    <controls:IconButton Grid.Row="3" Grid.Column="1" Width="40" Height="36" Margin="8,0,0,0"
+                            VerticalAlignment="Center" CornerRadius="6" Padding="12"
                             Command="{Binding Settings.PickModelFileCommand}"
-                            ToolTip.Tip="Pick a .ninfer file from disk">
-                        <Image Source="{x:Static local:IconSet.Folder}" Width="18" Margin="4" Height="18"/>
-                    </Button>
+                            Image="{x:Static local:IconSet.Folder}" IconSize="16"
+                            ToolTip.Tip="Pick a .ninfer file from disk"
+                            HighlightBrush="#33373E" PressedHighlightBrush="#33373E"/>
                     <TextBlock Grid.Row="4" Grid.ColumnSpan="2" FontSize="11" Foreground="#6E7279"
                                Margin="0,8,0,0" Text="{Binding Settings.FullModelPath}"
                                TextTrimming="CharacterEllipsis"
@@ -118,10 +119,10 @@
                             <Image Source="{x:Static local:IconSet.Warning}" Width="24" Height="24"
                                    VerticalAlignment="Center"/>
                             <StackPanel Spacing="2">
-                                <TextBlock Text="⚠ Context above 240K" FontSize="12"
+                                <TextBlock Text="Context above 240K" FontSize="12"
                                            FontWeight="SemiBold" Foreground="#E5B94E"/>
                                 <TextBlock FontSize="11" Foreground="#C8A96A" TextWrapping="Wrap"
-                                           Text="On Windows (WDDM) it may not work – DWM and applications hold 1–3 GiB of VRAM. If the server is not listening on the port, pick a profile ≤ 240K."/>
+                                           Text=""/>
                             </StackPanel>
                         </StackPanel>
                     </Border>
@@ -133,6 +134,10 @@
                             <TextBox Text="{Binding Settings.Port, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                         </StackPanel>
                     </StackPanel>
+                    <CheckBox IsChecked="{Binding Settings.WddmEvictableBudget, Mode=TwoWay}"
+                              Content="--wddm-evictable-budget"
+                              FontSize="12" Foreground="#C5C8C6" Margin="0,10,0,0"
+                              ToolTip.Tip="Pass --wddm-evictable-budget to the server at startup: the WDDM driver may reclaim evictable VRAM pages under pressure instead of the server failing. Recommended on Windows."/>
                     <TextBlock FontSize="11" Foreground="#6E7279" Margin="0,12,0,0"
                                Text="{Binding Settings.UrlText}"
                                ToolTip.Tip="Server address for the API"/>
@@ -141,35 +146,38 @@
         </Border>
 <!-- ====== Server controls ====== -->
         <Grid Grid.Row="2" Margin="0,0,0,12" ColumnDefinitions="Auto,Auto,Auto,*,Auto">
-            <Button Grid.Column="0" Classes="primary" MinWidth="130"
-                    Command="{Binding StartServerCommand}"
-                    IsEnabled="{Binding !IsRunning}">
-                <StackPanel Orientation="Horizontal" Spacing="8" Margin="5" HorizontalAlignment="Center">
-                    <Image Source="{x:Static local:IconSet.Start}"/>
-                    <TextBlock Text="Start"/>
+            <controls:IconButton Grid.Column="0" MinWidth="150" Height="32" CornerRadius="6" Padding="0,0" IconSize="16"
+                    Command="{Binding StartServerCommand}" IsEnabled="{Binding !IsRunning}"
+                    Image="{x:Static local:IconSet.Start}"
+                    Label="Start" LabelBrush="#C5C8C6" Background="#2D5A27"
+                    HighlightBrush="#4B8B3B" PressedHighlightBrush="#33373E"/>
+            <controls:IconButton Grid.Column="1" MinWidth="150" Height="32" CornerRadius="6"  Padding="0,0,0,0" IconSize="16"
+                    Command="{Binding StopServerCommand}" IsEnabled="{Binding IsRunning}"
+                    Image="{x:Static local:IconSet.Stop}"
+                    Label="Stop" LabelBrush="#C5C8C6" BorderBrush="#373B41"  Background="#8B0000"
+                    HighlightBrush="#33373E" PressedHighlightBrush="#33373E" Margin="16,0,0,0"/>
+            <controls:IconButton Grid.Column="2" MinWidth="150" Height="32" CornerRadius="6" Padding="0,0,0,0" IconSize="16"
+                    Command="{Binding RestartServerCommand}" Margin="16,0,0,0"
+                    Image="{x:Static local:IconSet.Restart}"
+                    Label="Restart" LabelBrush="#C5C8C6" BorderBrush="#373B41"
+                    HighlightBrush="#33373E" PressedHighlightBrush="#33373E"/>
+            <!-- Clickable link: opens the server UI in the default web browser. -->
+            <Button Grid.Column="4" Background="Transparent" BorderThickness="0" Padding="0"
+                    Cursor="Hand" Focusable="False" Command="{Binding OpenUrlCommand}"
+                    VerticalAlignment="Center" HorizontalAlignment="Right"
+                    ToolTip.Tip="Open the server UI in a browser">
+                <Button.Template>
+                    <ControlTemplate>
+                        <ContentPresenter Background="Transparent" Cursor="Hand"/>
+                    </ControlTemplate>
+                </Button.Template>
+                <StackPanel Orientation="Horizontal" Margin="5" Spacing="8"
+                            VerticalAlignment="Center" HorizontalAlignment="Right">
+                    <Image Source="{x:Static local:IconSet.Link}" Width="18" Height="18"
+                           Opacity="0.6" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding Settings.UrlText}" FontSize="12" Foreground="#8A8E94"/>
                 </StackPanel>
             </Button>
-            <Button Grid.Column="1" Classes="ghost" MinWidth="130" Margin="10,0,0,0"
-                    Command="{Binding StopServerCommand}"
-                    IsEnabled="{Binding IsRunning}">
-                <StackPanel Orientation="Horizontal" Spacing="8" Margin="5" HorizontalAlignment="Center">
-                    <Image Source="{x:Static local:IconSet.Stop}"/>
-                    <TextBlock Text="Stop"/>
-                </StackPanel>
-            </Button>
-            <Button Grid.Column="2" Classes="ghost" MinWidth="130" Margin="10,0,0,0"
-                    Command="{Binding RestartServerCommand}">
-                <StackPanel Orientation="Horizontal" Spacing="8" Margin="5" HorizontalAlignment="Center">
-                    <Image Source="{x:Static local:IconSet.Restart}"/>
-                    <TextBlock Text="Restart"/>
-                </StackPanel>
-            </Button>
-            <StackPanel Grid.Column="4" Orientation="Horizontal" Margin="5" Spacing="8"
-                        VerticalAlignment="Center" HorizontalAlignment="Right">
-                <Image Source="{x:Static local:IconSet.Link}" Width="18" Height="18"
-                       Opacity="0.6" VerticalAlignment="Center"/>
-                <TextBlock Text="{Binding Settings.UrlText}" FontSize="12" Foreground="#8A8E94"/>
-            </StackPanel>
         </Grid>
 
         <!-- ====== Terminal ====== -->
@@ -187,10 +195,14 @@
                             <TextBlock Text="{Binding TpsStatusText}" FontSize="11"
                                        Foreground="#8A8E94" VerticalAlignment="Center"
                                        ToolTip.Tip="Live throughput from the server log (current and average)"/>
-                            <Button Classes="icon" Command="{Binding ClearLogCommand}"
-                                    ToolTip.Tip="Clear terminal">
-                                <Image Source="{x:Static local:IconSet.Trash}"/>
-                            </Button>
+                            <controls:IconButton Width="40" Height="36" CornerRadius="6" Padding="6"
+                                    Command="{Binding CopyLogCommand}" ToolTip.Tip="Copy entire terminal log to clipboard"
+                                    Image="{x:Static local:IconSet.Copy}" IconSize="24"
+                                    HighlightBrush="#33373E" PressedHighlightBrush="#33373E"/>
+                            <controls:IconButton Width="40" Height="36" CornerRadius="6" Padding="6"
+                                    Command="{Binding ClearLogCommand}" ToolTip.Tip="Clear terminal"
+                                    Image="{x:Static local:IconSet.Trash}" IconSize="24"
+                                    HighlightBrush="#33373E" PressedHighlightBrush="#33373E"/>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <Ellipse Width="8" Height="8" Fill="{Binding StatusBrush}"
@@ -201,21 +213,30 @@
                         </StackPanel>
                     </DockPanel>
                 </Border>
-                <ScrollViewer x:Name="TermScroll" Margin="10"
+                <ScrollViewer x:Name="TermScroll" Margin="10" Focusable="True" Cursor="IBeam"
                               HorizontalScrollBarVisibility="Auto"
-                              VerticalScrollBarVisibility="Auto">
+                              VerticalScrollBarVisibility="Auto"
+                              ToolTip.Tip="Click a line to copy it; drag across lines to select and copy several; Shift+click to extend"
+                              PointerPressed="OnTermPointerPressed"
+                              PointerMoved="OnTermPointerMoved"
+                              PointerReleased="OnTermPointerReleased">
+                    <!-- Terminal lines are selectable: press to anchor, drag across lines to
+                         extend the selection (live highlight), release to copy; Shift+click
+                         extends from the anchor. The Copy button copies the whole log. -->
                     <ItemsControl x:Name="TermList" ItemsSource="{Binding Terminal}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <TextBlock Text="{Binding Text}"
-                                           Foreground="{Binding Brush}"
-                                           FontFamily="Cascadia Mono, Consolas, Courier New"
-                                           FontSize="12.5"/>
+                                <Border Background="{Binding BackgroundBrush}" Padding="2,0">
+                                    <TextBlock Text="{Binding Text}"
+                                               Foreground="{Binding Brush}"
+                                               FontFamily="Cascadia Mono, Consolas, Courier New"
+                                               FontSize="12.5"/>
+                                </Border>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
-                                <VirtualizingStackPanel/>
+                                <VirtualizingStackPanel x:Name="TermPanel"/>
                             </ItemsPanelTemplate>
                         </ItemsControl.ItemsPanel>
                     </ItemsControl>

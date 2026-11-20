@@ -1,10 +1,13 @@
+using Avalonia;
 using Avalonia.Media;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using NinferLauncher_v_2.Models;
 using NinferLauncher_v_2.Services;
 
@@ -26,13 +29,16 @@ public partial class ServerViewModel : ViewModelBase
 
     public ObservableCollection<TerminalLine> Terminal { get; } = new();
 
+    /// <summary>Anchor line for range selection (a Shift+click extends the range from here).</summary>
+    TerminalLine? _selectionAnchor;
+
     [ObservableProperty] bool _isRunning;
     [ObservableProperty] bool _canStop;
     [ObservableProperty] string _statusText = "Stopped";
     [ObservableProperty] ISolidColorBrush _statusBrush = Palette.Dimmed;
 
     /// <summary>Live throughput readout: "Prefill: X tok/s (avg Y) • Decode: A tok/s (avg B)".</summary>
-    [ObservableProperty] string _tpsStatusText = "⚡ Prefill: —  •  Decode: —";
+    [ObservableProperty] string _tpsStatusText = "⚌ Prefill: —  •  Decode: —";
     double _pfCur, _dcCur, _pfAvg, _dcAvg;
 
     public SettingsViewModel Settings => _settings;
@@ -71,21 +77,25 @@ public partial class ServerViewModel : ViewModelBase
         if (prefill > 0) _pfAvg = _pfAvg <= 0 ? prefill : _pfAvg + (prefill - _pfAvg) * 0.35;
         if (decode > 0) _dcAvg = _dcAvg <= 0 ? decode : _dcAvg + (decode - _dcAvg) * 0.35;
         TpsStatusText =
-            $"⚡ Prefill: {Fmt(_pfCur)} tok/s{(_pfAvg > 0 ? $" (avg {Fmt(_pfAvg)})" : "")}" +
+            $"⚌ Prefill: {Fmt(_pfCur)} tok/s{(_pfAvg > 0 ? $" (avg {Fmt(_pfAvg)})" : "")}" +
             $"  •  Decode: {Fmt(_dcCur)} tok/s{(_dcAvg > 0 ? $" (avg {Fmt(_dcAvg)})" : "")}";
     }
 
     void ResetTps()
     {
         _pfCur = _dcCur = _pfAvg = _dcAvg = 0;
-        TpsStatusText = "⚡ Prefill: —  •  Decode: —";
+        TpsStatusText = "⚌ Prefill: —  •  Decode: —";
     }
 
     static string Fmt(double v) => v >= 1000
         ? v.ToString("0", System.Globalization.CultureInfo.CurrentCulture)
         : v.ToString("0.#", System.Globalization.CultureInfo.CurrentCulture);
 
-    public void AttachWindow(Avalonia.Controls.Window window) => _window = window;
+    /// <summary>The window is stored for clipboard access (Avalonia 12 exposes the clipboard on the top-level).</summary>
+    public void AttachWindow(Avalonia.Controls.Window window)
+    {
+        _window = window;
+    }
 
     /// <summary>Application shutdown – stops the server and releases the process.</summary>
     public void OnWindowClosing()
@@ -169,7 +179,7 @@ public partial class ServerViewModel : ViewModelBase
             ? $"[LAUNCHER] Start: {profile.ExeName} (benchmark – freeing VRAM first)"
             : $"[LAUNCHER] Start: {profile.ExeName} (port {port})");
         AppendLine("-------------------------------------------------------------");
-        _service.Start(dir, _settings.FullModelPath, port, profile);
+        _service.Start(dir, _settings.FullModelPath, port, profile, _settings.WddmEvictableBudget);
     }
 
     [RelayCommand]
@@ -207,6 +217,192 @@ public partial class ServerViewModel : ViewModelBase
         }
     }
 
+    /// <summary>Opens the server UI (<see cref="SettingsViewModel.UrlText"/>) in the default web browser.</summary>
+    [RelayCommand]
+    private void OpenUrl()
+    {
+        if (!_settings.IsPortValid)
+        {
+            AppendLine("[ERROR] Enter a valid port first.", true);
+            return;
+        }
+        var url = _settings.UrlText;
+        try
+        {
+            Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+            AppendLine($"[LAUNCHER] Opening {url} in the browser…");
+        }
+        catch (Exception ex)
+        {
+            AppendLine($"[ERROR] Could not open {url}: {ex.Message}", true);
+        }
+    }
+
     [RelayCommand]
     private void ClearLog() => Terminal.Clear();
+
+    /// <summary>Copies the whole terminal log to the clipboard.
+    /// (Individual lines can also be selected with the mouse and copied – Avalonia
+    /// TextBlocks support native selection.)</summary>
+    [RelayCommand]
+    private async void CopyLog()
+    {
+        if (Terminal.Count == 0)
+            return;
+        string text = string.Join(Environment.NewLine, Terminal.Select(l => l.Text));
+        var clipboard = GetClipboard();
+        if (clipboard is null)
+        {
+            AppendLine("[ERROR] Clipboard is not available.", true);
+            return;
+        }
+        // TEMP diagnostics: pinpoint where the clipboard write hangs.
+        System.Diagnostics.Debug.WriteLine("[CLIP] CopyLog start (" + Terminal.Count + " lines)");
+        var ok = false;
+        try
+        {
+            await Avalonia.Input.Platform.ClipboardExtensions.SetTextAsync(clipboard, text);
+            ok = true;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine("[CLIP] CopyLog FAILED: " + ex);
+        }
+        System.Diagnostics.Debug.WriteLine("[CLIP] CopyLog done ok=" + ok);
+        Dispatcher.UIThread.Post(() =>
+            AppendLine(ok
+                ? $"[LAUNCHER] Copied {Terminal.Count} lines to the clipboard."
+                : "[ERROR] Clipboard write failed – another app is holding the clipboard open.", true));
+    }
+
+    /// <summary>Terminal selection start: a plain press anchors on this line and highlights it;
+    /// a Shift+press keeps the existing anchor and highlights the inclusive range to this line.
+    /// Nothing is copied until the selection is committed on pointer release.</summary>
+    public void BeginLineSelection(TerminalLine line, bool extend)
+    {
+        if (extend && _selectionAnchor is not null)
+        {
+            HighlightRange(_selectionAnchor, line);
+            return;
+        }
+
+        _selectionAnchor = line;
+        ClearLineSelection();
+        line.IsSelected = true;
+    }
+
+    public void UpdateLineSelection(TerminalLine line)
+    {
+        if (_selectionAnchor is null)
+            return;
+        HighlightRange(_selectionAnchor, line);
+    }
+
+    /// <summary>Commit on pointer release: copies the currently highlighted lines to the
+    /// clipboard (a single line for a plain click, the dragged/extended range otherwise).</summary>
+    public void CommitLineSelection()
+    {
+        int lo = int.MaxValue, hi = int.MinValue;
+        for (int i = 0; i < Terminal.Count; i++)
+        {
+            if (!Terminal[i].IsSelected)
+                continue;
+            if (i < lo) lo = i;
+            if (i > hi) hi = i;
+        }
+
+        if (lo > hi)
+            return;
+        CopyRange(lo, hi);
+    }
+
+    /// <summary>Highlights the inclusive range between two terminal lines, clearing the rest.</summary>
+    void HighlightRange(TerminalLine anchor, TerminalLine line)
+    {
+        int start = Terminal.IndexOf(anchor);
+        int end = Terminal.IndexOf(line);
+        if (start < 0 || end < 0)
+            return;
+
+        int lo = Math.Min(start, end);
+        int hi = Math.Max(start, end);
+
+        ClearLineSelection();
+        for (int i = lo; i <= hi; i++)
+            Terminal[i].IsSelected = true;
+    }
+
+    /// <summary>Clears the selection highlight from every terminal line.</summary>
+    public void ClearLineSelection()
+    {
+        foreach (var l in Terminal)
+            l.IsSelected = false;
+    }
+
+    /// <summary>Copies the inclusive line range to the clipboard and reports it in the log.</summary>
+    async void CopyRange(int lo, int hi)
+    {
+        var sb = new System.Text.StringBuilder();
+        for (int i = lo; i <= hi; i++)
+        {
+            if (i > lo)
+                sb.Append(Environment.NewLine);
+            sb.Append(Terminal[i].Text);
+        }
+        string text = sb.ToString();
+
+        var clipboard = GetClipboard();
+        if (clipboard is null)
+        {
+            AppendLine("[ERROR] Clipboard is not available.", true);
+            return;
+        }
+
+        var ok = false;
+        try
+        {
+            await Avalonia.Input.Platform.ClipboardExtensions.SetTextAsync(clipboard, text);
+            ok = true;
+        }
+        catch
+        {
+        }
+        Dispatcher.UIThread.Post(() =>
+            AppendLine(ok
+                ? $"[LAUNCHER] Copied {hi - lo + 1} selected line(s) to the clipboard."
+                : "[ERROR] Clipboard write failed – another app is holding the clipboard open.", true));
+    }
+
+    /// <summary>Resolves the platform <see cref="Avalonia.Input.Platform.IClipboard"/>.
+    /// Avalonia 12 exposes the clipboard on the window/top-level, so the attached window is
+    /// used when available; a reflection lookup of the service locator is a fallback for the
+    /// case where the window isn't attached yet.</summary>
+    Avalonia.Input.Platform.IClipboard? GetClipboard()
+    {
+        if (_window?.Clipboard is { } windowClipboard)
+            return windowClipboard;
+
+        try
+        {
+            var locatorType = typeof(Avalonia.Input.Platform.IClipboard).Assembly
+                .GetType("Avalonia.AvaloniaLocator");
+            if (locatorType is null)
+                return null;
+            // CurrentMutable is the concrete AvaloniaLocator; resolve its public GetService(Type)
+            // from the type itself (not the runtime instance type) for reliability.
+            object? locator = locatorType
+                .GetProperty("CurrentMutable", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)?
+                .GetValue(null);
+            if (locator is null)
+                return null;
+            object? service = locatorType
+                .GetMethod("GetService", [typeof(object)])!
+                .Invoke(locator, [typeof(Avalonia.Input.Platform.IClipboard)]);
+            return service as Avalonia.Input.Platform.IClipboard;
+        }
+        catch
+        {
+            return null;
+        }
+    }
 }

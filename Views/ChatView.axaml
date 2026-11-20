@@ -1,23 +1,163 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:local="using:NinferLauncher_v_2"
-             x:Class="NinferLauncher_v_2.Views.ChatView">
-
-    <Grid RowDefinitions="Auto,*" Margin="24,20,24,20">
-        <StackPanel Grid.Row="0">
-            <TextBlock Text="CHAT" FontSize="22" FontWeight="Bold"/>
-            <TextBlock Text="Conversation with the server" FontSize="12"
-                       Foreground="#6E7279" Margin="0,2,0,16"/>
-        </StackPanel>
-
-        <Border Grid.Row="1" Classes="card">
-            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="14">
-                <Image Source="{x:Static local:IconSet.Chat}" Width="56" Height="56" Opacity="0.5"/>
-                <TextBlock Text="Chat is coming soon" FontSize="16" FontWeight="SemiBold"
-                                       HorizontalAlignment="Center"/>
-                <TextBlock Text="This section will be added in a later version – communicating with the running server via the API."
-                           FontSize="12" Foreground="#6E7279" HorizontalAlignment="Center"/>
-            </StackPanel>
+             xmlns:controls="using:NinferLauncher_v_2.Controls"
+             xmlns:models="using:NinferLauncher_v_2.Models"
+             xmlns:vm="using:NinferLauncher_v_2.ViewModels"
+             x:Class="NinferLauncher_v_2.Views.ChatView"
+             x:DataType="vm:ChatViewModel"
+             IsTabStop="False">
+    <UserControl.Styles>
+        <Style Selector="TextBox.chatInput">
+            <Setter Property="Height" Value="84"/>
+            <Setter Property="Background" Value="#00FFFFFF"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="0"/>
+            <Setter Property="VerticalAlignment" Value="Stretch"/>
+            <Setter Property="VerticalContentAlignment" Value="Top"/>
+            <Setter Property="Padding" Value="8,8,8,0"/>
+            <Setter Property="MinHeight" Value="72"/>
+            <Setter Property="FontSize" Value="15"/>
+        </Style>
+        <Style Selector="TextBox.chatSearch">
+            <Setter Property="Background" Value="#24272C"/>
+            <Setter Property="BorderBrush" Value="#2F3239"/>
+            <Setter Property="Height" Value="34"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="10,0,10,0"/>
+            <Setter Property="FontSize" Value="13"/>
+        </Style>
+        <Style Selector="ListBoxItem">
+            <Setter Property="Background" Value="#00FFFFFF"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Margin" Value="0,3,0,0"/>
+            <Setter Property="Padding" Value="10,7,10,7"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Background="{TemplateBinding Background}"
+                            CornerRadius="{TemplateBinding CornerRadius}"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter Content="{TemplateBinding Content}"
+                                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                                          HorizontalAlignment="Stretch"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="ListBoxItem:pointerover">
+            <Setter Property="Background" Value="#24272C"/>
+        </Style>
+        <Style Selector="ListBoxItem:selected">
+            <Setter Property="Background" Value="#33363D"/>
+        </Style>
+    </UserControl.Styles>
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="252"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+        <Border Grid.Column="0" Background="#1E2024"
+                BorderBrush="#2A2D33" BorderThickness="0,0,1,0">
+            <DockPanel Margin="10,18,10,12">
+                <StackPanel DockPanel.Dock="Top" Spacing="3">
+                    <controls:IconButton Command="{Binding NewChatCommand}"
+                                         Image="/Icons/new_chat.png"
+                                         Label="New chat" Height="56"
+                                         CornerRadius="8" Padding="0" IconSize="32
+                                         "
+                                         LabelBrush="#E3E6EA"
+                                         HighlightBrush="#24272C"
+                                         PressedHighlightBrush="#2A2D33"/>
+                    <TextBox Classes="chatSearch" Margin="2,5,2,0"
+                             IsVisible="True"
+                             Text="{Binding SearchQuery}"
+                             PlaceholderText="Search…"/>
+                </StackPanel>
+                <ListBox ItemsSource="{Binding FilteredChats}"
+                         SelectedItem="{Binding SelectedChat, Mode=TwoWay}"
+                         Background="#202329" BorderThickness="0">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding DisplayName}"
+                                       FontSize="13"
+                                       TextTrimming="CharacterEllipsis"/>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </DockPanel>
         </Border>
+<Grid Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+           
+            <Grid Grid.Row="1" Margin="16,20,24,0">
+                <ScrollViewer Name="MessagesScroller"
+                              VerticalScrollBarVisibility="Auto"
+                              >
+                    <StackPanel Spacing="12">
+                        <ItemsControl ItemsSource="{Binding SelectedChat.Messages}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type models:ChatMessage}">
+                                    <StackPanel>
+                                        <StackPanel Orientation="Horizontal" Spacing="8"
+                                                    VerticalAlignment="Top">
+                                            <Grid Width="24" Height="24"
+                                                  VerticalAlignment="Top">
+                                                <Ellipse Fill="{Binding SenderBrush}"/>
+                                                <TextBlock Text="{Binding AvatarGlyph}"
+                                                           FontSize="9" FontWeight="Bold"
+                                                           Foreground="#1D1F21"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"/>
+                                            </Grid>
+                                            <TextBlock Text="{Binding SenderName}"
+                                                       FontSize="12" FontWeight="SemiBold"
+                                                       Foreground="{Binding SenderBrush}"
+                                                       VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding TimeText}"
+                                                       FontSize="11" Foreground="#6E7279"
+                                                       VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                        <TextBlock Text="{Binding Text}"
+                                                   Foreground="{Binding TextBrush}"
+                                                   TextWrapping="Wrap" Margin="29,3,0,0"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <Rectangle Name="BottomAnchor" Width="0" Height="0"/>
+                    </StackPanel>
+                </ScrollViewer>
+                <TextBlock Text="What can i do for you?"
+                           FontSize="30" Foreground="#E8EAED"
+                           IsVisible="{Binding ShowEmptyHint}"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                           Margin="0,0,0,150"/>
+            </Grid>
+            <Grid Grid.Row="2" Margin="24,0,24,24">
+                <Border Background="#202329" BorderBrush="#2F3239"
+                        BorderThickness="1" CornerRadius="16">
+                    <Grid>
+                        <TextBox Name="InputBox" Classes="chatInput"
+                                 PlaceholderText="Zeptejte se na cokoli"
+                                 Text="{Binding InputText, Mode=TwoWay}"
+                                 KeyDown="OnInputKeyDown"/>
+                        <Grid Margin="8,4,8,8" VerticalAlignment="Bottom">
+                            <controls:IconButton HorizontalAlignment="Left"
+                                                 Width="36" Height="36"
+                                                 CornerRadius="12" Padding="8"
+                                                 Background="#2A2D33"
+                                                 HighlightBrush="#33363D"
+                                                 Image="/Icons/attachment.png"
+                                                 IconSize="20"
+                                                 ToolTip.Tip="Přidat přílohu (brzy)"/>
+                        </Grid>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Grid>
     </Grid>
 </UserControl>

@@ -5,6 +5,7 @@
         <Nullable>enable</Nullable>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <ApplicationManifest>app.manifest</ApplicationManifest>
+        <ApplicationIcon>Assets\NinferLauncherIco.ico</ApplicationIcon>
     </PropertyGroup>
 
     <ItemGroup>
@@ -13,6 +14,7 @@
         <AvaloniaResource Include="Icons\**"/>
         <None Include="bench_corpus.ids" CopyToOutputDirectory="PreserveNewest" />
         <None Include="bench_corpus.manifest.json" CopyToOutputDirectory="PreserveNewest" />
+        <None Include="profiles.json" CopyToOutputDirectory="PreserveNewest" />
     </ItemGroup>
 
     <ItemGroup>
