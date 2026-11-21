@@ -17,6 +17,7 @@ public static class Palette
 {
     public static readonly Avalonia.Media.SolidColorBrush Dimmed = new(Avalonia.Media.Color.Parse("#6E7279"));
     public static readonly Avalonia.Media.SolidColorBrush Running = new(Avalonia.Media.Color.Parse("#6A9955"));
+    public static readonly Avalonia.Media.SolidColorBrush Warning = new(Avalonia.Media.Color.Parse("#E5B94E"));
     public static readonly Avalonia.Media.SolidColorBrush Error = new(Avalonia.Media.Color.Parse("#A54242"));
 }
 
@@ -48,10 +49,13 @@ public partial class ServerViewModel : ViewModelBase
     public ServerViewModel(SettingsViewModel settings)
     {
         _settings = settings;
+        _hw = new HardwareMonitor();
         _service.OutputLine += line =>
             Dispatcher.UIThread.Post(() => HandleServerLine(line));
         _service.StateChanged += () =>
             Dispatcher.UIThread.Post(UpdateStateUi);
+        _hw.SampleReady += s =>
+            Dispatcher.UIThread.Post(() => UpdateHw(s));
     }
 
     /// <summary>Received server lines → terminal (filters noise) + tok/s chip.</summary>
@@ -91,6 +95,56 @@ public partial class ServerViewModel : ViewModelBase
         ? v.ToString("0", System.Globalization.CultureInfo.CurrentCulture)
         : v.ToString("0.#", System.Globalization.CultureInfo.CurrentCulture);
 
+    // ====== Hardware monitor: GPU memory used/max, GPU usage %, RAM usage %, RAM used/max ======
+    HardwareMonitor _hw = null!; // created in the ctor (needs _service)
+
+    [ObservableProperty] double _gpuMemPct;
+    [ObservableProperty] double _gpuUsePct;
+    [ObservableProperty] double _ramPct;
+    [ObservableProperty] double _ramMemPct;
+    [ObservableProperty] string _gpuMemText = "— / — GB";
+    [ObservableProperty] string _gpuUseText = "—";
+    [ObservableProperty] string _ramPctText = "—";
+    [ObservableProperty] string _ramMemText = "— / — GB";
+
+    /// <summary>Bar fill colour: green up to 75 %, yellow up to 90 %, red above (VRAM pressure).</summary>
+    static ISolidColorBrush BarBrush(double pct) =>
+        pct >= 90 ? Palette.Error : pct >= 75 ? Palette.Warning : Palette.Running;
+
+    public ISolidColorBrush GpuMemBarBrush => BarBrush(GpuMemPct);
+    public ISolidColorBrush GpuUseBarBrush => BarBrush(GpuUsePct);
+    public ISolidColorBrush RamPctBarBrush => BarBrush(RamPct);
+    public ISolidColorBrush RamMemBarBrush => BarBrush(RamMemPct);
+
+    static string Gb(double bytes) =>
+        (bytes / 1073741824.0).ToString("0.#", System.Globalization.CultureInfo.CurrentCulture);
+
+    void UpdateHw(HwSample s)
+    {
+        GpuMemPct = s.GpuTotalBytes > 0 ? s.GpuUsedBytes / s.GpuTotalBytes * 100 : 0;
+        GpuUsePct = s.GpuUtilPct;
+        RamPct = s.RamLoadPct;
+        RamMemPct = s.RamTotalBytes > 0 ? s.RamUsedBytes / s.RamTotalBytes * 100 : 0;
+        // the VRAM total can be unknown (WMI/perf counters only report a sentinel
+        // on some builds) - then show the used amount only
+        GpuMemText = s.GpuTotalBytes > 0
+            ? $"{Gb(s.GpuUsedBytes)} / {Gb(s.GpuTotalBytes)} GB"
+            : (s.GpuUsedBytes > 0 ? $"{Gb(s.GpuUsedBytes)} GB" : "—");
+        GpuUseText = s.GpuUtilPct > 0
+            ? s.GpuUtilPct.ToString("0", System.Globalization.CultureInfo.CurrentCulture) + "%"
+            : "—";
+        RamPctText = s.RamTotalBytes > 0
+            ? s.RamLoadPct.ToString("0", System.Globalization.CultureInfo.CurrentCulture) + "%"
+            : "—";
+        RamMemText = s.RamTotalBytes > 0
+            ? $"{Gb(s.RamUsedBytes)} / {Gb(s.RamTotalBytes)} GB"
+            : "— / — GB";
+        OnPropertyChanged(nameof(GpuMemBarBrush));
+        OnPropertyChanged(nameof(GpuUseBarBrush));
+        OnPropertyChanged(nameof(RamPctBarBrush));
+        OnPropertyChanged(nameof(RamMemBarBrush));
+    }
+
     /// <summary>The window is stored for clipboard access (Avalonia 12 exposes the clipboard on the top-level).</summary>
     public void AttachWindow(Avalonia.Controls.Window window)
     {
@@ -100,6 +154,7 @@ public partial class ServerViewModel : ViewModelBase
     /// <summary>Application shutdown – stops the server and releases the process.</summary>
     public void OnWindowClosing()
     {
+        _hw.Dispose();
         _service.Stop();
         _service.Dispose();
     }
@@ -164,20 +219,35 @@ public partial class ServerViewModel : ViewModelBase
             AppendLine($"[ERROR] Server directory does not exist: {dir}", true);
             return;
         }
-        if (!File.Exists(_settings.FullModelPath))
+        // vLLM profiles load a HuggingFace-style model DIRECTORY; Ninfer profiles a .ninfer file.
+        bool modelOk = profile.Engine == Engine.Vllm
+            ? Directory.Exists(_settings.FullModelPath)
+            : File.Exists(_settings.FullModelPath);
+        if (!modelOk)
         {
-            AppendLine($"[ERROR] Model not found: {_settings.FullModelPath}", true);
+            AppendLine($"[ERROR] Model not found: {_settings.FullModelPath}" +
+                       (profile.Engine == Engine.Vllm ? " (vLLM expects a model directory)" : ""), true);
             return;
         }
 
         AppendLine($"[LAUNCHER] Profile: {profile.Name}");
-        if (profile.WarnHighContext)
+        if (profile.WarnHighContext && profile.Engine == Engine.Ninfer)
             AppendLine($"[WARN] Profile {profile.MaxContext / 1000}K tokens is above 240K – it may not work on Windows (WDDM). If the server is not listening on the port, run a lower profile.", true);
         ResetTps();
         AppendLine($"[LAUNCHER] Directory: {dir}");
-        AppendLine(profile.IsBench
-            ? $"[LAUNCHER] Start: {profile.ExeName} (benchmark – freeing VRAM first)"
-            : $"[LAUNCHER] Start: {profile.ExeName} (port {port})");
+        if (profile.Engine == Engine.Vllm)
+        {
+            // Log the exact resolved vLLM command so the user can compare with their bat script.
+            string vllmCmd = string.Join(' ', ServerProfiles.BuildArgs(
+                profile, _settings.FullModelPath, port, dir, _settings.WddmEvictableBudget));
+            AppendLine($"[LAUNCHER] Start: python\\python.exe {vllmCmd}");
+        }
+        else
+        {
+            AppendLine(profile.IsBench
+                ? $"[LAUNCHER] Start: {profile.ExeName} (benchmark – freeing VRAM first)"
+                : $"[LAUNCHER] Start: {profile.ExeName} (port {port})");
+        }
         AppendLine("-------------------------------------------------------------");
         _service.Start(dir, _settings.FullModelPath, port, profile, _settings.WddmEvictableBudget);
     }

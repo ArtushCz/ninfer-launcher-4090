@@ -10,8 +10,7 @@
 
     <ItemGroup>
         <Folder Include="Models\"/>
-        <AvaloniaResource Include="Assets\**"/>
-        <AvaloniaResource Include="Icons\**"/>
+        <AvaloniaResource Include="Assets\**" Exclude="Assets\**\*.cs" />
         <None Include="bench_corpus.ids" CopyToOutputDirectory="PreserveNewest" />
         <None Include="bench_corpus.manifest.json" CopyToOutputDirectory="PreserveNewest" />
         <None Include="profiles.json" CopyToOutputDirectory="PreserveNewest" />
@@ -19,6 +18,13 @@
 
     <ItemGroup>
         <PackageReference Include="Avalonia" Version="12.1.4"/>
+        <PackageReference Include="Avalonia.Controls.ItemsRepeater" Version="12.0.0" />
+        <!-- Simplecto.Avalonia.RichTextBox: built from the vendored source in
+             .api-test\avrsrc (newer than the 1.11.6 NuGet package; drag-selection
+             fix for scrolled chat bubbles lives there). To go back to the package:
+             <PackageReference Include="Simplecto.Avalonia.RichTextBox" Version="1.11.6" /> -->
+        <ProjectReference Include="..\.api-test\avrsrc\AvRichTextBox\AvRichTextBox.csproj" />
+        <PackageReference Include="Markdig" Version="1.4.0" />
         <PackageReference Include="Avalonia.Desktop" Version="12.1.4"/>
         <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.4"/>
         <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.4"/>
@@ -27,5 +33,8 @@
             <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
         </PackageReference>
         <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2"/>
+        <PackageReference Include="System.Diagnostics.PerformanceCounter" Version="10.0.0"/>
+        <PackageReference Include="System.Management" Version="10.0.0"/>
+        <PackageReference Include="Microsoft.Windows.Compatibility" Version="10.0.0"/>
     </ItemGroup>
 </Project>

@@ -9,13 +9,13 @@ using System.Runtime.InteropServices;
 namespace NinferLauncher_v_2;
 
 /// <summary>
-/// Ikony z PNG souboru /Icons/*.png.
+/// Ikony z PNG souboru /Assets/*.png.
 /// Zakladni ikony jsou 48–50 px, verze _mini 16 px (tlacitka/klikaci akce),
 /// verze _large 64 px (menu). Chybici ikony se nahradi error.png.
 /// </summary>
 public static class IconSet
 {
-    const string BaseUri = "avares://NinferLauncher-v-2/Icons/";
+    const string BaseUri = "avares://NinferLauncher-v-2/Assets/";
 
     static readonly Dictionary<string, IImage> _cache = new();
     static readonly object _lock = new();
@@ -72,7 +72,7 @@ public static class IconSet
     /// <summary>Zalozni ikona pro chybějici PNG.</summary>
     static IImage GetErrorIcon() => _error.Value;
 
-    /// <summary>Nalodi PNG z /Icons; vraci null, kdyz soubor neexistuje.</summary>
+    /// <summary>Nalodi PNG z /Assets; vraci null, kdyz soubor neexistuje.</summary>
     static IImage? TryLoadFile(string file)
     {
         try

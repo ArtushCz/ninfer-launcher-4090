@@ -1,7 +1,9 @@
 using System;
 using System.Collections.ObjectModel;
 using Avalonia.Media;
+using AvRichTextBox;
 using CommunityToolkit.Mvvm.ComponentModel;
+using NinferLauncher_v_2.Services;
 
 namespace NinferLauncher_v_2.Models;
 
@@ -14,6 +16,11 @@ public sealed class ChatMessage
     public bool IsUser { get; }
     public bool IsError { get; }
     public bool IsPending { get; }
+
+    /// <summary>Rendered content of the message (Markdown for AI replies, plain text
+    /// for user lines) – bound to the read-only RichTextBox in ChatView, which makes
+    /// every message drag-selectable and copyable (Ctrl+C → plain text).</summary>
+    public FlowDocument Document { get; }
 
     public string SenderName => IsUser ? "user" : "AI";
     public string TimeText => Time.ToString("HH:mm");
@@ -47,6 +54,7 @@ public sealed class ChatMessage
         IsError = isError;
         IsPending = isPending;
         Time = DateTime.Now;
+        Document = ChatMarkdown.Build(this);
     }
 }
 

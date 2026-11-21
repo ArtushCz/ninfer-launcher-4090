@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text.Encodings.Web;
@@ -22,6 +23,15 @@ public class ServerSettings
     /// <summary>Checked on the server page → pass <c>--wddm-evictable-budget</c> at startup:
     /// the WDDM driver can reclaim evictable VRAM pages under pressure instead of failing.</summary>
     public bool WddmEvictableBudget { get; set; } = true;
+
+    /// <summary>Server directory for the vLLM engine â€“ persisted separately from
+    /// <see cref="ServerDir"/> (the Ninfer one), so each engine remembers its own
+    /// folder when the NINFER / VLLM switcher is used. Missing in old settings.json files.</summary>
+    public string? VllmServerDir { get; set; }
+
+    /// <summary>vLLM model directory (HuggingFace folder) â€“ kept separate from the
+    /// Ninfer <see cref="ModelFile"/> for the same reason.</summary>
+    public string? VllmModelFile { get; set; }
 }
 
 /// <summary>Vision token mode (see CustomProfiles.txt: Text-Only / Vision 4k / Vision 8k).</summary>
@@ -43,6 +53,16 @@ public enum ProfileGroup
     Untested,    // red – "Not tested / not working"
 }
 
+/// <summary>Inference backend behind the OpenAI-compatible server: the native Ninfer
+/// engine, or vLLM (started as <c>python\python.exe -m vllm.entrypoints.openai.api_server</c>
+/// from the vLLM directory).</summary>
+[JsonConverter(typeof(LowercaseEnumConverter<Engine>))]
+public enum Engine
+{
+    Ninfer,
+    Vllm,
+}
+
 /// <summary>Launch profile – pre-prepared combinations (measured RTX 4090 24 GB limits).</summary>
 public sealed record ServerProfile(
     string Name,
@@ -52,12 +72,26 @@ public sealed record ServerProfile(
     string KvDtype,
     VisionMode Vision,
     bool IsBench = false,
-    ProfileGroup Group = ProfileGroup.Untested)
+    ProfileGroup Group = ProfileGroup.Untested,
+    Engine Engine = Engine.Ninfer,
+    string? ServedModelName = null,
+    string VllmDtype = "bfloat16",
+    string? VllmQuantization = null,
+    string? VllmKvCacheDtype = null,
+    double GpuMemoryUtilization = 0,
+    string? ExtraArgs = null)
 {
     /// <summary>Optional comment from profiles.json (not used by the launcher).</summary>
     public string? Note { get; set; }
 
-    public string ExeName => IsBench ? "ninfer_bench.exe" : "ninfer-serve.exe";
+    /// <summary>vLLM profiles start <c>python\python.exe</c> from the vLLM directory;
+    /// <c>maxModelLen</c> reuses <see cref="MaxContext"/>. MTP/draft/KV-dtype/vision stay
+    /// Ninfer-only.</summary>
+    public bool IsVllm => Engine == Engine.Vllm;
+
+    public string ExeName => Engine == Engine.Vllm
+        ? @"python\python.exe"
+        : (IsBench ? "ninfer_bench.exe" : "ninfer-serve.exe");
 
     /// <summary>Warning: contexts above 240K may not work on Windows (WDDM).</summary>
     public bool WarnHighContext => MaxContext > ServerProfiles.SafeContextLimit;
@@ -103,7 +137,11 @@ public static class ServerProfiles
         new("Fast 32K • rk2v4-e8 (2-bit) • MTP4", 32_768, true, 4, "rk2v4-e8", VisionMode.None, false, ProfileGroup.Usable),
         new("Fast 128K • rk2v4-e8 (2-bit) • MTP4", 131_072, true, 4, "rk2v4-e8", VisionMode.None, false, ProfileGroup.Usable),
         new("Fast 64K • int8 (INT8) • MTP4", 65_536, true, 4, "int8", VisionMode.None, false, ProfileGroup.Usable),
-        
+
+        // ===== vLLM (server directory = the vLLM folder with its python\ directory) =====
+        new("VLLM Qwen3-VL-8B FP8", 32_768, false, 0, "rk2v4-e8", VisionMode.None, false, ProfileGroup.Usable,
+            Engine.Vllm, "qwen3-vl-8b", "bfloat16", "fp8_per_tensor", "fp8", 0.75),
+
         // ===== Benchmarks (blue) — run via ninfer_bench.exe =====
         new("Bench 64K • rk2v4-e8 • MTP4", 65_536, true, 4, "rk2v4-e8", VisionMode.None, true, ProfileGroup.Bench),
         new("Bench 32K • rk2v4-e8 • MTP4", 32_768, true, 4, "rk2v4-e8", VisionMode.None, true, ProfileGroup.Bench),
@@ -169,11 +207,16 @@ public static class ServerProfiles
                     foreach (var p in parsed.Profiles)
                     {
                         if (string.IsNullOrWhiteSpace(p.Name) || p.MaxContext <= 0 ||
-                            string.IsNullOrWhiteSpace(p.KvDtype))
-                            continue; // skip malformed entries, keep the rest
+                            (p.Engine != Engine.Vllm && string.IsNullOrWhiteSpace(p.KvDtype)))
+                            continue; // skip malformed entries, keep the rest (vLLM ignores KV dtype)
                         var prof = new ServerProfile(
                             p.Name.Trim(), p.MaxContext, p.MtpSpec, p.DraftTokens,
-                            p.KvDtype, p.Vision, p.IsBench, p.Group);
+                            string.IsNullOrWhiteSpace(p.KvDtype) ? "rk2v4-e8" : p.KvDtype,
+                            p.Vision, p.IsBench, p.Group,
+                            p.Engine, p.ServedModelName,
+                            string.IsNullOrWhiteSpace(p.VllmDtype) ? "bfloat16" : p.VllmDtype,
+                            p.VllmQuantization, p.VllmKvCacheDtype,
+                            p.GpuMemoryUtilization, p.ExtraArgs);
                         prof.Note = p.Note;
                         loaded.Add(prof);
                     }
@@ -201,9 +244,15 @@ public static class ServerProfiles
         "Ninfer launcher – server profiles. Edit this file and restart the launcher.\r\n" +
         "  group   = dropdown section: recommended (green, tested) | usable (amber, tested)\r\n" +
         "            | bench (blue, run via ninfer_bench.exe) | untested (red)\r\n" +
-        "  vision  = none | tokens4096 | tokens8192\r\n" +
+        "  engine  = ninfer (default) | vllm – vllm needs the vLLM folder (with its python\\ dir)\r\n" +
+        "            as the server directory; the model then points to a model DIRECTORY\r\n" +
+        "  vision  = none | tokens4096 | tokens8192 (ninfer only)\r\n" +
         "  mtpSpec = true/false – MTP speculation (draftTokens = drafts per step; false means MTP0)\r\n" +
-        "  isBench = true → run ninfer_bench.exe instead of ninfer-serve.exe\r\n";
+        "  isBench = true → run ninfer_bench.exe instead of ninfer-serve.exe\r\n" +
+        "  vLLM fields: servedModelName (name served by /v1 endpoints; defaults to the model\r\n" +
+        "            path) | vllmDtype (bfloat16 | float16 | float32) | vllmQuantization (e.g.\r\n" +
+        "            fp8_per_tensor) | vllmKvCacheDtype (e.g. fp8) | gpuMemoryUtilization\r\n" +
+        "            (0.0–1.0, 0 = engine default) | extraArgs (extra api_server CLI args)\r\n";
 
     /// <summary>Writes the built-in profiles as a human-editable <c>profiles.json</c>.</summary>
     internal static void WriteProfilesFile(string path)
@@ -224,6 +273,13 @@ public static class ServerProfiles
                 Vision = p.Vision,
                 IsBench = p.IsBench,
                 Note = p.Note,
+                Engine = p.Engine,
+                ServedModelName = p.ServedModelName,
+                VllmDtype = p.VllmDtype,
+                VllmQuantization = p.VllmQuantization,
+                VllmKvCacheDtype = p.VllmKvCacheDtype,
+                GpuMemoryUtilization = p.GpuMemoryUtilization,
+                ExtraArgs = p.ExtraArgs,
             }).ToList(),
             };
             File.WriteAllText(path, SerializeDoc(doc));
@@ -254,6 +310,13 @@ public static class ServerProfiles
                     Vision = p.Vision,
                     IsBench = p.IsBench,
                     Note = p.Note,
+                    Engine = p.Engine,
+                    ServedModelName = p.ServedModelName,
+                    VllmDtype = p.VllmDtype,
+                    VllmQuantization = p.VllmQuantization,
+                    VllmKvCacheDtype = p.VllmKvCacheDtype,
+                    GpuMemoryUtilization = p.GpuMemoryUtilization,
+                    ExtraArgs = p.ExtraArgs,
                 }).ToList(),
             };
             File.WriteAllText(Path.Combine(AppContext.BaseDirectory, ProfilesFileName), SerializeDoc(doc));
@@ -299,7 +362,15 @@ public static class ServerProfiles
     {
         var rows = new List<ProfileRow>(All.Length);
         for (int i = 0; i < All.Length; i++)
-            rows.Add(new ProfileRow(All[i].Name, GroupColor(All[i].Group), All[i], i));
+        {
+            var p = All[i];
+            // Make the engine visible in the dropdown: vLLM profiles get a "[vLLM]"
+            // marker (skipped when the user already named it that way).
+            string title = p.IsVllm && !p.Name.Contains("vllm", StringComparison.OrdinalIgnoreCase)
+                ? $"{p.Name}  [vLLM]"
+                : p.Name;
+            rows.Add(new ProfileRow(title, GroupColor(p.Group), p, i));
+        }
         return rows;
     }
 
@@ -320,6 +391,8 @@ public static class ServerProfiles
     /// under pressure instead of failing.</summary>
     public static List<string> BuildArgs(ServerProfile profile, string modelPath, int port, string serverDir, bool wddmEvictableBudget)
     {
+        if (profile.Engine == Engine.Vllm)
+            return BuildVllmArgs(profile, modelPath, port);
         if (profile.IsBench)
             return BuildBenchArgs(profile, modelPath, serverDir);
 
@@ -351,6 +424,41 @@ public static class ServerProfiles
             args.AddRange(new[] { "--spec", "mtp", "--draft-tokens", profile.DraftTokens.ToString(), "--lm-head-draft" });
         return args;
     }
+
+    /// <summary>
+    /// vLLM profiles start the vLLM directory's private Python as
+    /// <c>python\python.exe -m vllm.entrypoints.openai.api_server</c>. The model is a
+    /// HuggingFace-style directory; <see cref="ServerProfile.MaxContext"/> becomes
+    /// <c>--max-model-len</c>. Ninfer-only knobs (KV dtype, MTP, draft tokens, vision)
+    /// are not passed. Free-form <see cref="ServerProfile.ExtraArgs"/> are appended last.
+    /// </summary>
+    private static List<string> BuildVllmArgs(ServerProfile profile, string modelPath, int port)
+    {
+        var args = new List<string>
+        {
+            "-m", "vllm.entrypoints.openai.api_server",
+            "--model", modelPath,
+            "--served-model-name", string.IsNullOrWhiteSpace(profile.ServedModelName) ? modelPath : profile.ServedModelName,
+            "--dtype", string.IsNullOrWhiteSpace(profile.VllmDtype) ? "bfloat16" : profile.VllmDtype,
+        };
+        if (!string.IsNullOrWhiteSpace(profile.VllmQuantization))
+            args.AddRange(new[] { "--quantization", profile.VllmQuantization });
+        if (!string.IsNullOrWhiteSpace(profile.VllmKvCacheDtype))
+            args.AddRange(new[] { "--kv-cache-dtype", profile.VllmKvCacheDtype });
+        args.Add("--max-model-len");
+        args.Add(profile.MaxContext.ToString(CultureInfo.InvariantCulture));
+        if (profile.GpuMemoryUtilization > 0)
+        {
+            args.Add("--gpu-memory-utilization");
+            args.Add(profile.GpuMemoryUtilization.ToString("0.##", CultureInfo.InvariantCulture));
+        }
+        args.AddRange(new[] { "--host", "127.0.0.1", "--port", port.ToString(CultureInfo.InvariantCulture) });
+        if (!string.IsNullOrWhiteSpace(profile.ExtraArgs))
+            args.AddRange(profile.ExtraArgs.Split(WsChars, StringSplitOptions.RemoveEmptyEntries));
+        return args;
+    }
+
+    static readonly char[] WsChars = { ' ', '\t', '\r', '\n' };
 
     /// <summary>
     /// <c>ninfer_bench.exe</c> uses its own CLI (not the server's). Each speed-test profile
@@ -504,6 +612,27 @@ public sealed class ProfileDto
 
     /// <summary>true → run <c>ninfer_bench.exe</c> instead of <c>ninfer-serve.exe</c>.</summary>
     public bool IsBench { get; set; }
+
+    /// <summary>Backend: "ninfer" (default) | "vllm".</summary>
+    public Engine Engine { get; set; } = Engine.Ninfer;
+
+    /// <summary>vLLM: name served by the /v1 endpoints (defaults to the model path).</summary>
+    public string? ServedModelName { get; set; }
+
+    /// <summary>vLLM: --dtype (bfloat16 | float16 | float32).</summary>
+    public string VllmDtype { get; set; } = "bfloat16";
+
+    /// <summary>vLLM: --quantization (e.g. fp8_per_tensor); empty = unquantized.</summary>
+    public string? VllmQuantization { get; set; }
+
+    /// <summary>vLLM: --kv-cache-dtype (e.g. fp8); empty = engine default.</summary>
+    public string? VllmKvCacheDtype { get; set; }
+
+    /// <summary>vLLM: --gpu-memory-utilization (0.0–1.0); 0 = engine default.</summary>
+    public double GpuMemoryUtilization { get; set; }
+
+    /// <summary>vLLM: extra whitespace-separated api_server CLI arguments.</summary>
+    public string? ExtraArgs { get; set; }
 
     /// <summary>Free-form comment for yourself (not used by the launcher).</summary>
     public string? Note { get; set; }

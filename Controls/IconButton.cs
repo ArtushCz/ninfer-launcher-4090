@@ -38,6 +38,10 @@ public class IconButton : TemplatedControl
             s.IconGeometry = string.IsNullOrWhiteSpace(d) ? null : Geometry.Parse(d!);
         });
 
+        // zmena IsEnabled musi zaktualizovat stitneni + pozadi
+        IsEnabledProperty.Changed.AddClassHandler<IconButton>((s, e) => s.ApplyVisualState());
+
+
         // kdykoli se meni vizualni vlastnost, zaktualizuj template
         foreach (var dp in new AvaloniaProperty[]
                  {
@@ -47,11 +51,11 @@ public class IconButton : TemplatedControl
                      HighlightBrushProperty, PressedHighlightBrushProperty,
                      CornerRadiusProperty, PaddingProperty,
                      BorderBrushProperty, BorderThicknessProperty,
+                     LabelOnlyProperty,
                  })
             dp.Changed.AddClassHandler<IconButton>((s, e) => s.SyncVisuals());
 
-        // zmena IsEnabled musi zaktualizovat stitneni + pozadi
-        IsEnabledProperty.Changed.AddClassHandler<IconButton>((s, e) => s.ApplyVisualState());
+        
     }
 
     public IconButton()
@@ -96,6 +100,14 @@ public class IconButton : TemplatedControl
     {
         get => GetValue(IconBrushProperty);
         set => SetValue(IconBrushProperty, value);
+    }
+    /// <summary>Kdyz je true, host ikony se schova a text se vycentruje bez mezer pro ikonu.</summary>
+    public static readonly StyledProperty<bool> LabelOnlyProperty =
+        AvaloniaProperty.Register<IconButton, bool>(nameof(LabelOnly));
+    public bool LabelOnly
+    {
+        get => GetValue(LabelOnlyProperty);
+        set => SetValue(LabelOnlyProperty, value);
     }
 
     /// <summary>Barva ikony pri najeti mysi (null = stejne jako zakladni).</summary>
@@ -482,11 +494,22 @@ public static readonly StyledProperty<IBrush?> BorderBrushProperty =
         }
         if (_iconHost != null)
         {
-            _iconHost.Width = IconSize;
-            _iconHost.Height = IconSize;
+            if (LabelOnly)
+            {
+                // v Avalonii 12 neexistuje Visibility enum â€” schovame ho pres IsVisible
+                _iconHost.IsVisible = false;
+            }
+            else
+            {
+                _iconHost.Width = IconSize;
+                _iconHost.Height = IconSize;
+                _iconHost.IsVisible = true;
+            }
         }
         if (_label != null)
         {
+            // pri LabelOnly se odpusti levy odsazeni, jinak by zustala mezera po ikone
+            _label.Margin = LabelOnly ? new Thickness(0) : new Thickness(10, 0, 0, 0);
             _label.Text = Label;
             _label.Foreground = LabelColorBrush;
             _label.FontSize = LabelFontSize;

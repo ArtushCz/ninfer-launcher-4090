@@ -18,9 +18,11 @@ public enum ServerState
 }
 
 /// <summary>
-/// Manages the Ninfer server process (equivalent to RunNinfer.bat) –
-/// starts ninfer-serve.exe / ninfer_bench.exe with the profile arguments,
-/// captures stdout/stderr and can kill the process (including the process tree).
+/// Manages the inference server process (equivalent to RunNinfer.bat) –
+/// starts ninfer-serve.exe / ninfer_bench.exe with the profile arguments, or
+/// <c>python\python.exe -m vllm.entrypoints.openai.api_server</c> for vLLM profiles,
+/// captures stdout/stderr and can kill the process (including the process tree –
+/// which also takes down vLLM's engine-core worker processes).
 /// Events are raised on worker threads!
 /// </summary>
 public class ServerService : IDisposable
@@ -46,11 +48,18 @@ public class ServerService : IDisposable
             var exe = Path.Combine(dir, profile.ExeName);
             if (!File.Exists(exe))
             {
-                LastError = $"File not found: {exe}";
+                // vLLM profiles point at <vllmDir>\python\python.exe – a wrong
+                // server directory surfaces here with a clear "File not found".
+                LastError = profile.Engine == Engine.Vllm
+                    ? $"File not found: {exe} – is this the vLLM directory (it must contain python\\python.exe)?"
+                    : $"File not found: {exe}";
                 SetState(ServerState.Stopped);
                 return;
             }
 
+            // Ninfer-only prep: vLLM profiles are never benches and the engine
+            // manages its own VRAM, so the orphan kill + VRAM settle sleep below
+            // only apply to the native engine's benchmark runs.
             if (profile.IsBench)
             {
                 string? corpusError = EnsureBenchCorpus(dir);
@@ -194,6 +203,12 @@ public class ServerService : IDisposable
     }
 
     public bool IsRunning => _process is { HasExited: false };
+
+    /// <summary>The live server process (for GPU/RAM metrics) – null when stopped.</summary>
+    public Process? CurrentProcess
+    {
+        get { lock (_sync) return _process; }
+    }
 
     void KillProcess()
     {

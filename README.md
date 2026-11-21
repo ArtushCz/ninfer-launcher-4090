@@ -23,6 +23,11 @@ Built with **Avalonia UI 12** + **CommunityToolkit.Mvvm**, targeting **.NET 10**
 - Live terminal with noisy-log filtering, a prefill/decode tok/s readout and
   **select-and-copy**: individual log lines can be selected with the mouse and copied,
   and a **Copy all** button (in the terminal header) copies the whole log to the clipboard.
+- Chat page: message bubbles render Markdown (headings, code blocks, tables, links);
+  message text is selectable – drag to highlight, `Ctrl+C` copies it as plain text.
+  Bubbles are rendered by the Simplecto `AvRichTextBox` control, built from the vendored
+  source in `../.api-test/avrsrc/AvRichTextBox` (project reference; its test suite lives
+  in `../.api-test/avrsrc` as well).
 - Live configuration (server dir, model file, port) persisted to a local
   `settings.json` file next to the exe (falls back to
   `%AppData%\NinferLauncher\settings.json` if the exe's folder is not writable).
@@ -175,7 +180,7 @@ launcher to add, remove or reorder entries:
 │   └── SettingsStore.cs          # local settings.json next to the exe
 ├── ViewModels/                   # MVVM view models
 ├── Views/                        # .axaml views
-├── Icons/  and  Assets/          # embedded icons / assets
+├── Assets/                        # embedded icons / assets
 ```
 
 ## Troubleshooting

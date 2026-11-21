@@ -1,5 +1,5 @@
 {
-  "readme": "Ninfer launcher – server profiles. Edit this file and restart the launcher.\r\n  group   = dropdown section: recommended (green, tested) | usable (amber, tested)\r\n            | bench (blue, run via ninfer_bench.exe) | untested (red)\r\n  vision  = none | tokens4096 | tokens8192\r\n  mtpSpec = true/false – MTP speculation (draftTokens = drafts per step; false means MTP0)\r\n  isBench = true → run ninfer_bench.exe instead of ninfer-serve.exe\r\n  kvCapacityAuto = true → pass --kv-capacity auto: the engine sizes the KV pool\r\n                to the free VRAM after loading the weights (1 GiB headroom), so an\r\n                oversized context cannot crash startup (needs ninfer-4090 ≥ v1.2)\r\n  hostKvMib = N → pinned system-RAM KV cache (--host-kv-mib N): inactive context is\r\n                offloaded to RAM under VRAM pressure instead of failing (0 = engine default).\r\n                NOTE: only builds that support the flag accept it (sergiuszm/ninfer-4090);\r\n                the UDPSendToFailed build does NOT know --host-kv-mib – keep 0 there",
+  "readme": "Ninfer launcher – server profiles. Edit this file and restart the launcher.\r\n  group   = dropdown section: recommended (green, tested) | usable (amber, tested)\r\n            | bench (blue, run via ninfer_bench.exe) | untested (red)\r\n  engine  = ninfer (default) | vllm – vllm needs the vLLM folder (with its python\\ dir)\r\n            as the server directory; the model then points to a model DIRECTORY\r\n  vision  = none | tokens4096 | tokens8192 (ninfer only)\r\n  mtpSpec = true/false – MTP speculation (draftTokens = drafts per step; false means MTP0)\r\n  isBench = true → run ninfer_bench.exe instead of ninfer-serve.exe\r\n  vLLM fields: servedModelName (name served by /v1 endpoints; defaults to the model\r\n            path) | vllmDtype (bfloat16 | float16 | float32) | vllmQuantization (e.g.\r\n            fp8_per_tensor) | vllmKvCacheDtype (e.g. fp8) | gpuMemoryUtilization\r\n            (0.0–1.0, 0 = engine default) | extraArgs (extra api_server CLI args)",
   "profiles": [
     {
       "name": "Agent - 220K Context + MTP3",
@@ -24,6 +24,22 @@
       "isBench": false,
       "kvCapacityAuto": false,
       "hostKvMib": 0
+    },
+    {
+      "name": "VLLM Qwen3-VL-8B FP8",
+      "group": "usable",
+      "maxContext": 32768,
+      "kvDtype": "rk2v4-e8",
+      "mtpSpec": false,
+      "draftTokens": 0,
+      "vision": "none",
+      "isBench": false,
+      "engine": "vllm",
+      "servedModelName": "qwen3-vl-8b",
+      "vllmDtype": "bfloat16",
+      "vllmQuantization": "fp8_per_tensor",
+      "vllmKvCacheDtype": "fp8",
+      "gpuMemoryUtilization": 0.75
     }
   ]
 }

@@ -57,3 +57,6 @@ ninfer-rtx4090*/
 ninfer-serve.exe
 ninfer_bench.exe
 *.ninfer
+
+# Claude
+CLAUDE.md

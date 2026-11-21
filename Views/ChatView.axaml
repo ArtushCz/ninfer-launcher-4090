@@ -1,4 +1,4 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+﻿<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="using:NinferLauncher_v_2.Controls"
              xmlns:models="using:NinferLauncher_v_2.Models"
@@ -61,7 +61,7 @@
             <DockPanel Margin="10,18,10,12">
                 <StackPanel DockPanel.Dock="Top" Spacing="3">
                     <controls:IconButton Command="{Binding NewChatCommand}"
-                                         Image="/Icons/new_chat.png"
+                                         Image="avares://NinferLauncher-v-2/Assets/new_chat.png"
                                          Label="New chat" Height="56"
                                          CornerRadius="8" Padding="0" IconSize="32
                                          "
@@ -71,7 +71,7 @@
                     <TextBox Classes="chatSearch" Margin="2,5,2,0"
                              IsVisible="True"
                              Text="{Binding SearchQuery}"
-                             PlaceholderText="Search…"/>
+                             PlaceholderText="Search..."/>
                 </StackPanel>
                 <ListBox ItemsSource="{Binding FilteredChats}"
                          SelectedItem="{Binding SelectedChat, Mode=TwoWay}"
@@ -121,9 +121,24 @@
                                                        FontSize="11" Foreground="#6E7279"
                                                        VerticalAlignment="Center"/>
                                         </StackPanel>
-                                        <TextBlock Text="{Binding Text}"
-                                                   Foreground="{Binding TextBrush}"
-                                                   TextWrapping="Wrap" Margin="29,3,0,0"/>
+                                         <!-- read-only RichTextBox (Simplecto AvRichTextBox via our ChatRichTextBox wrapper):
+                              drag-select + Ctrl+C copies the message as plain text; the Document is built from
+                              Markdown (AI) or plain text (user). We bind the wrapper's public `Doc` property,
+                              because the library's `FlowDocumentProperty` field is internal and our compiled
+                              XAML cannot reference it (FieldAccessException on first message render). -->
+                                         <controls:ChatRichTextBox Classes="chatMsg"
+                                                          Background="#00FFFFFF"
+                                                          BorderThickness="0"
+                                                          CornerRadius="0"
+                                                          Padding="29,3,0,3"
+                                                          FontSize="15"
+                                                          FontFamily="Inter"
+                                                          IsTabStop="False"
+                                                          Cursor="IBeam"
+                                                          SelectionBrush="#3A6FD8"
+                                                          ToolTip.Tip="Drag to select, Ctrl+C to copy"
+                                                          IsReadOnly="True"
+                                                          Doc="{Binding Document}"/>
                                     </StackPanel>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
@@ -151,9 +166,9 @@
                                                  CornerRadius="12" Padding="8"
                                                  Background="#2A2D33"
                                                  HighlightBrush="#33363D"
-                                                 Image="/Icons/attachment.png"
+                                                 Image="avares://NinferLauncher-v-2/Assets/attachment.png"
                                                  IconSize="20"
-                                                 ToolTip.Tip="Přidat přílohu (brzy)"/>
+                                                 ToolTip.Tip="PĂ„Ä…Ă˘â€žËidat pĂ„Ä…Ă˘â€žËĂ„â€šĂ‚Â­lohu (brzy)"/>
                         </Grid>
                     </Grid>
                 </Border>

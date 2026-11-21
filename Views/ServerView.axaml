@@ -6,7 +6,7 @@
              x:Class="NinferLauncher_v_2.Views.ServerView"
              x:DataType="vm:ServerViewModel">
 
-    <Grid Margin="24,20,24,20" RowDefinitions="Auto,Auto,Auto,*">
+    <Grid Margin="24,20,24,20" RowDefinitions="Auto,Auto,Auto,Auto,*">
 
         <!-- ====== Header ====== -->
         <DockPanel Grid.Row="0" Margin="0,0,0,16">
@@ -35,7 +35,7 @@
                 <Grid Grid.Column="0" Margin="0,0,18,0" ColumnDefinitions="*,Auto"
           RowDefinitions="Auto,Auto,Auto,Auto,Auto">
                     <TextBlock Grid.Row="0" Grid.ColumnSpan="2" Classes="cardtitle"
-                               Text="NINFER SERVER DIRECTORY"/>
+                               Text="{Binding Settings.ServerCardTitle}"/>
                     <TextBox Grid.Row="1" Grid.Column="0"
                              Text="{Binding Settings.ServerDir, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                     <controls:IconButton Grid.Row="1" Grid.Column="1" Width="40" Height="36" Margin="8,0,0,0"
@@ -45,7 +45,7 @@
                             ToolTip.Tip="Select server directory"
                             HighlightBrush="#33373E" PressedHighlightBrush="#33373E"/>
                     <TextBlock Grid.Row="2" Grid.ColumnSpan="2" Classes="cardtitle"
-                               Text="MODEL FILE" Margin="0,12,0,6"/>
+                               Text="{Binding Settings.ModelCardTitle}" Margin="0,12,0,6"/>
                     <ComboBox Grid.Row="3" Grid.Column="0"
                               HorizontalAlignment="Stretch"
                               ItemsSource="{Binding Settings.ModelRows}"
@@ -61,9 +61,17 @@
                     </ComboBox>
                     <controls:IconButton Grid.Row="3" Grid.Column="1" Width="40" Height="36" Margin="8,0,0,0"
                             VerticalAlignment="Center" CornerRadius="6" Padding="12"
+                            IsVisible="{Binding Settings.ShowModelFilePicker}"
                             Command="{Binding Settings.PickModelFileCommand}"
                             Image="{x:Static local:IconSet.Folder}" IconSize="16"
                             ToolTip.Tip="Pick a .ninfer file from disk"
+                            HighlightBrush="#33373E" PressedHighlightBrush="#33373E"/>
+                    <controls:IconButton Grid.Row="3" Grid.Column="1" Width="40" Height="36" Margin="8,0,0,0"
+                            VerticalAlignment="Center" CornerRadius="6" Padding="12"
+                            IsVisible="{Binding Settings.ShowModelFolderPicker}"
+                            Command="{Binding Settings.PickModelFolderCommand}"
+                            Image="{x:Static local:IconSet.Folder}" IconSize="16"
+                            ToolTip.Tip="Pick a model directory (vLLM)"
                             HighlightBrush="#33373E" PressedHighlightBrush="#33373E"/>
                     <TextBlock Grid.Row="4" Grid.ColumnSpan="2" FontSize="11" Foreground="#6E7279"
                                Margin="0,8,0,0" Text="{Binding Settings.FullModelPath}"
@@ -73,7 +81,30 @@
 
                 <!-- right column: profile, port, token -->
                 <StackPanel Grid.Column="1" Spacing="6" Margin="0,0,0,0">
-                    <TextBlock Classes="cardtitle" Text="SERVER PROFILE"/>
+                    <!-- Engine switcher: the visible NINFER / VLLM toggle -->
+                    <TextBlock Classes="cardtitle" Text="ENGINE"/>
+                    <StackPanel Orientation="Horizontal" Spacing="6"
+                                HorizontalAlignment="Left" MaxWidth="360">
+                        <controls:IconButton Width="80" Height="32" CornerRadius="6" Padding="0"
+                                Background="{Binding Settings.NinferToggleBackground}"
+                                BorderBrush="{Binding Settings.NinferToggleBorder}" BorderThickness="1"
+                                Label="NINFER" LabelFontSize="12"
+                                LabelBrush="{Binding Settings.NinferToggleLabelBrush}" LabelOnly="True"
+                                IsEnabled="{Binding Settings.CanSelectNinferEngine}"
+                                Command="{Binding Settings.SelectNinferEngineCommand}"
+                                ToolTip.Tip="Native Ninfer engine (ninfer-serve.exe) – .ninfer model files"
+                                HighlightBrush="#3A3F46" PressedHighlightBrush="#3A3F46"/>
+                        <controls:IconButton Width="80" Height="32" CornerRadius="6" Padding="0" 
+                                Background="{Binding Settings.VllmToggleBackground}"
+                                BorderBrush="{Binding Settings.VllmToggleBorder}" BorderThickness="1"
+                                Label="vLLM" LabelFontSize="12"
+                                LabelBrush="{Binding Settings.VllmToggleLabelBrush}" LabelOnly="True"
+                                IsEnabled="{Binding Settings.CanSelectVllmEngine}"
+                                Command="{Binding Settings.SelectVllmEngineCommand}"
+                                ToolTip.Tip="vLLM (python\python.exe from the vLLM directory) – HuggingFace model directories"
+                                HighlightBrush="#3A3F46" PressedHighlightBrush="#3A3F46"/>
+                    </StackPanel>
+                    <TextBlock Classes="cardtitle" Text="SERVER PROFILE" Margin="0,8,0,0"/>
                     <ComboBox ItemsSource="{Binding Settings.ProfileRows}"
                               SelectedItem="{Binding Settings.SelectedRow, Mode=TwoWay}"
                               HorizontalAlignment="Stretch"
@@ -94,6 +125,7 @@
                         <Grid ColumnDefinitions="Auto,*" ColumnSpacing="14">
                             <StackPanel Grid.Column="0" Spacing="3"
                                         VerticalAlignment="Top">
+                                <TextBlock Text="Engine:" Foreground="#8A8E94"/>
                                 <TextBlock Text="Context:" Foreground="#8A8E94"/>
                                 <TextBlock Text="MTP:" Foreground="#8A8E94"/>
                                 <TextBlock Text="KV cache:" Foreground="#8A8E94"/>
@@ -101,6 +133,7 @@
                                 <TextBlock Text="Binary:" Foreground="#8A8E94"/>
                             </StackPanel>
                             <StackPanel Grid.Column="1" Spacing="3">
+                                <TextBlock Text="{Binding Settings.InfoEngine}" TextWrapping="Wrap" FontWeight="SemiBold"/>
                                 <TextBlock Text="{Binding Settings.InfoContext}" TextWrapping="Wrap"/>
                                 <TextBlock Text="{Binding Settings.InfoMtp}" TextWrapping="Wrap"/>
                                 <TextBlock Text="{Binding Settings.InfoKv}" TextWrapping="Wrap"/>
@@ -127,6 +160,7 @@
                         </StackPanel>
                     </Border>
                     <TextBlock FontSize="11" Foreground="#6E7279" Margin="0,8,0,0"
+                        IsVisible="{Binding Settings.ShowWddmOption}"
                        Text="Ceilings measured on an RTX 4090 24 GB (--wddm-evictable-budget). Default: 240K + MTP3."/>
                     <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,12,0,0">
                         <StackPanel Width="150" Spacing="6">
@@ -135,6 +169,7 @@
                         </StackPanel>
                     </StackPanel>
                     <CheckBox IsChecked="{Binding Settings.WddmEvictableBudget, Mode=TwoWay}"
+IsVisible="{Binding Settings.ShowWddmOption}"
                               Content="--wddm-evictable-budget"
                               FontSize="12" Foreground="#C5C8C6" Margin="0,10,0,0"
                               ToolTip.Tip="Pass --wddm-evictable-budget to the server at startup: the WDDM driver may reclaim evictable VRAM pages under pressure instead of the server failing. Recommended on Windows."/>
@@ -180,8 +215,45 @@
             </Button>
         </Grid>
 
+        <!-- ====== Hardware monitor ====== -->
+        <Border Grid.Row="3" Classes="card" Margin="0,0,0,12">
+            <Grid RowDefinitions="Auto,*" RowSpacing="8">
+                <TextBlock Grid.Row="0" Classes="cardtitle" Text="HARDWARE MONITOR"/>
+                <Grid Grid.Row="1" ColumnDefinitions="*,*,*,*" ColumnSpacing="18">
+                    <StackPanel Grid.Column="0" Spacing="5">
+                        <TextBlock FontSize="11" Foreground="#8A8E94" Text="GPU MEMORY"/>
+                        <controls:StatBar Height="6" Value="{Binding GpuMemPct}"
+                                Fill="{Binding GpuMemBarBrush}"
+                                ToolTip.Tip="Dedicated GPU memory – used / total (nvidia-smi)"/>
+                        <TextBlock Text="{Binding GpuMemText}" FontSize="11" Foreground="#8A8E94"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Spacing="5">
+                        <TextBlock FontSize="11" Foreground="#8A8E94" Text="GPU USAGE"/>
+                        <controls:StatBar Height="6" Value="{Binding GpuUsePct}"
+                                Fill="{Binding GpuUseBarBrush}"
+                                ToolTip.Tip="GPU engine utilisation across all engines"/>
+                        <TextBlock Text="{Binding GpuUseText}" FontSize="11" Foreground="#8A8E94"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Spacing="5">
+                        <TextBlock FontSize="11" Foreground="#8A8E94" Text="MEMORY USAGE"/>
+                        <controls:StatBar Height="6" Value="{Binding RamPct}"
+                                Fill="{Binding RamPctBarBrush}"
+                                ToolTip.Tip="System RAM in use (Task Manager 'In use')"/>
+                        <TextBlock Text="{Binding RamPctText}" FontSize="11" Foreground="#8A8E94"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="3" Spacing="5">
+                        <TextBlock FontSize="11" Foreground="#8A8E94" Text="MEMORY"/>
+                        <controls:StatBar Height="6" Value="{Binding RamMemPct}"
+                                Fill="{Binding RamMemBarBrush}"
+                                ToolTip.Tip="System RAM – used / total physical"/>
+                        <TextBlock Text="{Binding RamMemText}" FontSize="11" Foreground="#8A8E94"/>
+                    </StackPanel>
+                </Grid>
+            </Grid>
+        </Border>
+
         <!-- ====== Terminal ====== -->
-        <Border Grid.Row="3" Background="#1D1F21"
+        <Border Grid.Row="4" Background="#1D1F21"
                 BorderBrush="#373B41" BorderThickness="1"
                 CornerRadius="10" ClipToBounds="True">
             <DockPanel>

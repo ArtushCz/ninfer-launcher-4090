@@ -16,13 +16,13 @@
         <Border Grid.Row="1" Classes="card">
             <StackPanel Spacing="14" MaxWidth="640" HorizontalAlignment="Left">
                 <StackPanel Spacing="6">
-                    <TextBlock Classes="cardtitle" Text="NINFER SERVER DIRECTORY"/>
+                    <TextBlock Classes="cardtitle" Text="{Binding ServerCardTitle}"/>
                     <TextBox Text="{Binding ServerDir, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                 </StackPanel>
 
                 <StackPanel Spacing="6">
                     <Grid ColumnDefinitions="*,Auto">
-                    <TextBlock Grid.Column="0" Classes="cardtitle" Text="MODEL FILE (.ninfer)"/>
+                    <TextBlock Grid.Column="0" Classes="cardtitle" Text="{Binding ModelCardTitle}"/>
                 </Grid>
                     <Grid ColumnDefinitions="*,Auto">
                         <ComboBox Grid.Column="0" ItemsSource="{Binding ModelRows}"
@@ -39,9 +39,18 @@
                         </ComboBox>
                         <controls:IconButton Grid.Column="1" Width="40" Height="36" Margin="8,0,0,0"
                                 VerticalAlignment="Center" CornerRadius="6" Padding="11"
+                                IsVisible="{Binding ShowModelFilePicker}"
                                 Command="{Binding PickModelFileCommand}"
-                                Image="{x:Static local:IconSet.Folder}" IconSize="16"
+                                Image="{x:Static local:IconSet.Folder}" 
+                                IconSize="16"
                                 ToolTip.Tip="Pick a .ninfer file from disk"
+                                HighlightBrush="#33373E" PressedHighlightBrush="#33373E"/>
+                        <controls:IconButton Grid.Column="1" Width="40" Height="36" Margin="8,0,0,0"
+                                VerticalAlignment="Center" CornerRadius="6" Padding="11"
+                                IsVisible="{Binding ShowModelFolderPicker}"
+                                Command="{Binding PickModelFolderCommand}"
+                                Image="{x:Static local:IconSet.Folder}" IconSize="16"
+                                ToolTip.Tip="Pick a model directory (vLLM)"
                                 HighlightBrush="#33373E" PressedHighlightBrush="#33373E"/>
                     </Grid>
                     <TextBlock FontSize="11" Foreground="#6E7279" Margin="0,4,0,0"
@@ -83,6 +92,7 @@
                                 <TextBlock Text="Binary:" Foreground="#8A8E94"/>
                             </StackPanel>
                         <StackPanel Grid.Column="1" Spacing="3">
+                                <TextBlock Text="{Binding InfoEngine}" TextWrapping="Wrap" FontWeight="SemiBold"/>
                                 <TextBlock Text="{Binding InfoContext}" TextWrapping="Wrap"/>
                                 <TextBlock Text="{Binding InfoMtp}" TextWrapping="Wrap"/>
                                 <TextBlock Text="{Binding InfoKv}" TextWrapping="Wrap"/>

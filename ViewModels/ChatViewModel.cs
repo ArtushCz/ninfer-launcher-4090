@@ -139,13 +139,19 @@ public partial class ChatViewModel : ViewModelBase
     async Task<string> RequestReplyAsync(ChatChannel chat)
     {
         var port = int.TryParse(_settings.Port, out var p) ? p : 11434;
+        // vLLM rejects model names it isn't serving – use the profile's served-model-name
+        // (Ninfer accepts the .ninfer filename, keep it as before).
+        var profile = _settings.SelectedProfile;
+        string modelName = profile.Engine == Engine.Vllm
+            ? (string.IsNullOrWhiteSpace(profile.ServedModelName) ? _settings.FullModelPath : profile.ServedModelName)
+            : _settings.ModelFile;
         using var request = new HttpRequestMessage(HttpMethod.Post, $"http://127.0.0.1:{port}/v1/chat/completions");
         if (!string.IsNullOrWhiteSpace(_settings.Token))
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _settings.Token);
 
         var body = new
         {
-            model = _settings.ModelFile,
+            model = modelName,
             stream = false,
             messages = BuildRoles(chat),
         };

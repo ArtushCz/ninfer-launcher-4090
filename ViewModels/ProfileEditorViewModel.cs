@@ -104,10 +104,20 @@ public partial class ProfileEditorViewModel : ViewModelBase
             _ => VisionMode.None,
         };
 
+        // vLLM-specific fields aren't editable on this page – carry them over from the
+        // original profile so saving a vLLM entry (e.g. a rename) keeps its engine,
+        // served-model-name, dtype/quantization, KV cache and GPU-memory settings.
         var profile = new ServerProfile(
             it.Name.Trim(), maxCtx, it.MtpSpec, it.MtpSpec ? drafts : 0,
             string.IsNullOrWhiteSpace(it.KvDtype) ? "rk2v4-e8" : it.KvDtype.Trim(),
-            vision, it.IsBench, group)
+            vision, it.IsBench, group,
+            it.Original?.Engine ?? Engine.Ninfer,
+            it.Original?.ServedModelName,
+            it.Original?.VllmDtype ?? "bfloat16",
+            it.Original?.VllmQuantization,
+            it.Original?.VllmKvCacheDtype,
+            it.Original?.GpuMemoryUtilization ?? 0,
+            it.Original?.ExtraArgs)
         {
             Note = string.IsNullOrWhiteSpace(it.Note) ? null : it.Note.Trim(),
         };

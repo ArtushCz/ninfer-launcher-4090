@@ -4,9 +4,9 @@
         xmlns:vm="using:NinferLauncher_v_2.ViewModels"
         x:Class="NinferLauncher_v_2.Views.MainWindow"
         x:DataType="vm:MainViewModel"
-        Icon="/Icons/NinferLauncherIco.png"
+        Icon="avares://NinferLauncher-v-2/Assets/NinferLauncherIco.png"
         Title="Ninfer Launcher – RTX 4090"
-        Width="1180" Height="720"
+        Width="1180" Height="920"
         MinWidth="980" MinHeight="620"
         WindowStartupLocation="CenterScreen">
 
@@ -18,7 +18,7 @@
             <DockPanel>
                 <!-- Logo at the top -->
                 <StackPanel DockPanel.Dock="Top" Margin="0,0,0,0">
-                    <Image Source="/Icons/NinferLauncherIco.png"
+                    <Image Source="avares://NinferLauncher-v-2/Assets/NinferLauncherIco.png"
                            Width="32" Height="150"
                            HorizontalAlignment="Center"/>
                 </StackPanel>
